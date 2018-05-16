@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NUnit.Framework;
+﻿using NUnit.Framework;
+using Proteogenomics;
+using System.IO;
 
 namespace TestProteogenomics
 {
@@ -11,9 +8,9 @@ namespace TestProteogenomics
     public class Test
     {
         [Test]
-        public void test()
+        public void CountReads()
         {
-
+            Assert.AreEqual(3970, new FastqProperties(Path.Combine(TestContext.CurrentContext.TestDirectory, "TestFastqs", "mapper.fastq")).ReadCount);
         }
     }
 }

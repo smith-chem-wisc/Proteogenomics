@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UsefulProteomicsDatabases;
+using System.Text.RegularExpressions;
 
 namespace Proteogenomics
 {
@@ -102,6 +103,28 @@ namespace Proteogenomics
                 else { dict[p.BaseSequence] = new List<Protein> { p }; }
             }
             return dict;
+        }
+
+        /// <summary>
+        /// Ensembl coding domain sequences (CDS) sometimes don't have start or stop codons annotated.
+        /// The only way I can figure out how to tell which they are is to read in the protein FASTA and find the ones starting with X's or containing a stop codon '*'
+        /// </summary>
+        /// <param name="spritzDirectory"></param>
+        /// <param name="proteinFastaPath"></param>
+        /// <returns></returns>
+        public static void GetImportantProteinAccessions(string proteinFastaPath, out Dictionary<string, string> proteinAccessionSequence, out HashSet<string> badProteinAccessions, 
+            out Dictionary<string, string> selenocysteineProteinAccessions)
+        {
+            Regex transcriptAccession = new Regex(@"(transcript:)([A-Za-z0-9_.]+)"); // need to include transcript accessions for when a GTF file is used and transcript IDs become the protein IDs
+            List<Protein> proteins = ProteinDbLoader.LoadProteinFasta(proteinFastaPath, true, DecoyType.None, false,
+                ProteinDbLoader.EnsemblAccessionRegex, ProteinDbLoader.EnsemblFullNameRegex, ProteinDbLoader.EnsemblFullNameRegex, ProteinDbLoader.EnsemblGeneNameRegex, null, out List<string> errors);
+            proteinAccessionSequence = proteins.Select(p => new KeyValuePair<string, string>(p.Accession, p.BaseSequence))
+                .Concat(proteins.Select(p => new KeyValuePair<string, string>(transcriptAccession.Match(p.FullName).Groups[2].Value, p.BaseSequence)))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            HashSet<string> badOnes = new HashSet<string>(proteins.Where(p => p.BaseSequence.Contains('X') || p.BaseSequence.Contains('*'))
+                .SelectMany(p => new string[] { p.Accession, transcriptAccession.Match(p.FullName).Groups[2].Value }));
+            badProteinAccessions = badOnes;
+            selenocysteineProteinAccessions = proteins.Where(p => !badOnes.Contains(p.Accession) && p.BaseSequence.Contains('U')).ToDictionary(p => p.Accession, p => p.BaseSequence);
         }
     }
 }

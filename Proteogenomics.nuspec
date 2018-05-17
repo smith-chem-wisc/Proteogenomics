@@ -12,6 +12,6 @@
   </metadata>
   <files>
     <file src="Proteogenomics\bin\Release\net471\Proteogenomics.dll" target="lib\net471" />
-    <file src="Proteogenomics\bin\Release\netcoreapp2.0\Proteogenomics.dll" target="lib\netstandard2.0" />
+    <file src="Proteogenomics\bin\Release\netstandard2.0\Proteogenomics.dll" target="lib\netstandard2.0" />
   </files>
 </package>

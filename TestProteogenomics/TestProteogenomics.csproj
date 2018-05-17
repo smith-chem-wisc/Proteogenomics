@@ -35,27 +35,108 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Bio.Core, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NetBio.Core.3.0.0-alpha\lib\netstandard2.0\Bio.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Chemistry, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\Chemistry.dll</HintPath>
+    </Reference>
+    <Reference Include="Chromatography, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\Chromatography.dll</HintPath>
+    </Reference>
+    <Reference Include="FlashLFQ, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\FlashLFQ.dll</HintPath>
+    </Reference>
+    <Reference Include="ManagedThermoHelperLayer, Version=1.0.305.0, Culture=neutral, processorArchitecture=AMD64">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\ManagedThermoHelperLayer.dll</HintPath>
+    </Reference>
+    <Reference Include="MassSpectrometry, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\MassSpectrometry.dll</HintPath>
+    </Reference>
+    <Reference Include="MathNet.Numerics, Version=4.4.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\MathNet.Numerics.4.4.1\lib\net461\MathNet.Numerics.dll</HintPath>
+    </Reference>
+    <Reference Include="mzIdentML, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\mzIdentML.dll</HintPath>
+    </Reference>
+    <Reference Include="MzLibUtil, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\MzLibUtil.dll</HintPath>
+    </Reference>
+    <Reference Include="MzML, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\MzML.dll</HintPath>
+    </Reference>
     <Reference Include="nunit.framework, Version=3.10.1.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
       <HintPath>..\packages\NUnit.3.10.1\lib\net45\nunit.framework.dll</HintPath>
     </Reference>
+    <Reference Include="pepXML, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\pepXML.dll</HintPath>
+    </Reference>
+    <Reference Include="Proteomics, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\Proteomics.dll</HintPath>
+    </Reference>
+    <Reference Include="Spectra, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\Spectra.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="Thermo, Version=1.0.305.0, Culture=neutral, processorArchitecture=AMD64">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\Thermo.dll</HintPath>
+    </Reference>
+    <Reference Include="UsefulProteomicsDatabases, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\mzLib.1.0.305\lib\net471\UsefulProteomicsDatabases.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Test.cs" />
+    <Compile Include="GeneModelTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="HardReverseStrand\codingSeq.fa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="HardReverseStrand\reverse.gff2.gff3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="HardReverseStrand\reverse.gff3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
+    <None Include="TestData\chr1_sample.fa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\chr7_one_transcript_reverse.gtf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\chrM_one_transcript_reverse.gtf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\headers.fa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\headersShort.fa">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\sample_gff.gff3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\sample_gtf.gtf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\sample_pacbio.gff3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="TestFastqs\mapper.fastq">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="TestGtfs\FilterThis.gtf" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
@@ -73,5 +154,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\NUnit.3.10.1\build\NUnit.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NUnit.3.10.1\build\NUnit.props'))" />
     <Error Condition="!Exists('..\packages\NUnit3TestAdapter.3.10.0\build\net35\NUnit3TestAdapter.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NUnit3TestAdapter.3.10.0\build\net35\NUnit3TestAdapter.props'))" />
+    <Error Condition="!Exists('..\packages\mzLib.1.0.305\build\net471\mzLib.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\mzLib.1.0.305\build\net471\mzLib.targets'))" />
   </Target>
+  <Import Project="..\packages\mzLib.1.0.305\build\net471\mzLib.targets" Condition="Exists('..\packages\mzLib.1.0.305\build\net471\mzLib.targets')" />
 </Project>

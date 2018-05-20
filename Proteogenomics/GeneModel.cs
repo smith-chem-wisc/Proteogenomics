@@ -68,13 +68,6 @@ namespace Proteogenomics
 
         #region Methods -- Read Gene Model File
 
-        public List<ISequence> SimplerParse(string geneModelFile)
-        {
-            ForceGffVersionTo2(geneModelFile, out string geneModelWithVersion2MarkedPath);
-            List<ISequence> geneFeatures = new GffParser().Parse(geneModelWithVersion2MarkedPath).ToList();
-            return geneFeatures;
-        }
-
         public void ReadGeneFeatures(string geneModelFile)
         {
             foreach (ISequence chromFeatures in SimplerParse(geneModelFile))
@@ -283,6 +276,13 @@ namespace Proteogenomics
                 { // nothing to do
                 }
             }
+        }
+
+        public static List<ISequence> SimplerParse(string geneModelFile)
+        {
+            ForceGffVersionTo2(geneModelFile, out string geneModelWithVersion2MarkedPath);
+            List<ISequence> geneFeatures = new GffParser().Parse(geneModelWithVersion2MarkedPath).ToList();
+            return geneFeatures;
         }
 
         private static Regex gffVersion = new Regex(@"(##gff-version\s+)(\d)");

@@ -1,4 +1,5 @@
 ﻿using Bio;
+using Bio.Extensions;
 using Bio.IO.Gff;
 using Bio.VCF;
 using Proteomics;
@@ -6,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Bio.Extensions;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -17,6 +17,9 @@ namespace Proteogenomics
     /// </summary>
     public class GeneModel
     {
+        private Gene currentGene = null;
+        private Transcript currentTranscript = null;
+
         /// <summary>
         /// Gets the first instance of a word
         /// </summary>
@@ -65,15 +68,16 @@ namespace Proteogenomics
 
         #region Methods -- Read Gene Model File
 
-        private Gene currentGene = null;
-        private Transcript currentTranscript = null;
-
-        public void ReadGeneFeatures(string geneModelFile)
+        public List<ISequence> SimplerParse(string geneModelFile)
         {
             ForceGffVersionTo2(geneModelFile, out string geneModelWithVersion2MarkedPath);
             List<ISequence> geneFeatures = new GffParser().Parse(geneModelWithVersion2MarkedPath).ToList();
+            return geneFeatures;
+        }
 
-            foreach (ISequence chromFeatures in geneFeatures)
+        public void ReadGeneFeatures(string geneModelFile)
+        {
+            foreach (ISequence chromFeatures in SimplerParse(geneModelFile))
             {
                 Chromosome chrom = Genome.Chromosomes.FirstOrDefault(x => x.FriendlyName == chromFeatures.ID);
                 if (chrom == null) { continue; }
@@ -289,7 +293,7 @@ namespace Proteogenomics
         /// </summary>
         /// <param name="gffPath"></param>
         /// <param name="gffWithVersionMarked2Path"></param>
-        private static void ForceGffVersionTo2(string gffPath, out string gffWithVersionMarked2Path)
+        public static void ForceGffVersionTo2(string gffPath, out string gffWithVersionMarked2Path)
         {
             gffWithVersionMarked2Path = Path.Combine(Path.GetDirectoryName(gffPath), Path.GetFileNameWithoutExtension(gffPath) + ".gff2" + Path.GetExtension(gffPath));
             if (File.Exists(gffWithVersionMarked2Path)) return;
@@ -414,7 +418,7 @@ namespace Proteogenomics
         public List<Transcript> ApplyVariants(List<Variant> variants)
         {
             // Must add variants before applying them to this gene model
-            if (PreviouslyAddedVariants != variants) {  AddVariantAnnotations(variants); }
+            if (PreviouslyAddedVariants != variants) { AddVariantAnnotations(variants); }
             return ApplyVariants(variants, Genes.SelectMany(g => g.Transcripts).ToList());
         }
 

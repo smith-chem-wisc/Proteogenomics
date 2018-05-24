@@ -24,40 +24,30 @@ namespace Benchmark
             stopwatch.Start();
 
             // download and decompress references
-            using (WebClient Client = new WebClient())
-            {
-                Client.DownloadFile(@"ftp://ftp.ensembl.org/pub/release-81//fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz", "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz");
-                Client.DownloadFile(@"ftp://ftp.ensembl.org/pub/release-81/gff3/homo_sapiens/Homo_sapiens.GRCh38.81.gff3.gz", "Homo_sapiens.GRCh38.81.gff3.gz");
-                Client.DownloadFile(@"ftp://ftp.ensembl.org/pub/release-81//fasta/homo_sapiens/pep/Homo_sapiens.GRCh38.pep.all.fa.gz", "Homo_sapiens.GRCh38.pep.all.fa.gz");
-            }
             string genomeFasta = "Homo_sapiens.GRCh38.dna.primary_assembly.fa";
             string geneModelFile = "Homo_sapiens.GRCh38.81.gff3";
             string proteinFasta = "Homo_sapiens.GRCh38.pep.all.fa";
-            if (!File.Exists(genomeFasta))
+            string[] gunzippedFiles = new[] { genomeFasta, geneModelFile, proteinFasta };
+            if (!gunzippedFiles.All(f => File.Exists(f) && new FileInfo(f).Length > 0))
             {
-                using (FileStream stream = new FileStream("Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz", FileMode.Open))
-                using (GZipStream gunzip = new GZipStream(stream, CompressionMode.Decompress))
-                using (var f = File.Create(proteinFasta))
+                using (WebClient Client = new WebClient())
                 {
-                    gunzip.CopyTo(f);
+                    Client.DownloadFile(@"ftp://ftp.ensembl.org/pub/release-81//fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz", "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz");
+                    Client.DownloadFile(@"ftp://ftp.ensembl.org/pub/release-81/gff3/homo_sapiens/Homo_sapiens.GRCh38.81.gff3.gz", "Homo_sapiens.GRCh38.81.gff3.gz");
+                    Client.DownloadFile(@"ftp://ftp.ensembl.org/pub/release-81//fasta/homo_sapiens/pep/Homo_sapiens.GRCh38.pep.all.fa.gz", "Homo_sapiens.GRCh38.pep.all.fa.gz");
                 }
             }
-            if (!File.Exists(geneModelFile))
+
+            foreach (var gunzippedFile in gunzippedFiles)
             {
-                using (FileStream stream = new FileStream("Homo_sapiens.GRCh38.81.gff3.gz", FileMode.Open))
-                using (GZipStream gunzip = new GZipStream(stream, CompressionMode.Decompress))
-                using (var f = File.Create(proteinFasta))
+                if (!File.Exists(gunzippedFile) || new FileInfo(gunzippedFile).Length == 0)
                 {
-                    gunzip.CopyTo(f);
-                }
-            }
-            if (!File.Exists(proteinFasta))
-            {
-                using (FileStream stream = new FileStream("Homo_sapiens.GRCh38.pep.all.fa.gz", FileMode.Open))
-                using (GZipStream gunzip = new GZipStream(stream, CompressionMode.Decompress))
-                using (var f = File.Create(proteinFasta))
-                {
-                    gunzip.CopyTo(f);
+                    using (FileStream stream = new FileStream(gunzippedFile + ".gz", FileMode.Open))
+                    using (GZipStream gunzip = new GZipStream(stream, CompressionMode.Decompress))
+                    using (var f = File.Create(gunzippedFile))
+                    {
+                        gunzip.CopyTo(f);
+                    }
                 }
             }
 

@@ -66,7 +66,7 @@ namespace Proteogenomics
             List<Interval> results = IntervalsCenter.Where(i => i.Intersects(queryInterval)).ToList();
             if (queryInterval.OneBasedStart < Center && LeftNode != null) { results.AddRange(LeftNode.Query(queryInterval)); }
             if (queryInterval.OneBasedStart > Center && RightNode != null) { results.AddRange(RightNode.Query(queryInterval)); }
-            return results;
+            return results.Distinct().ToList();
         }
 
         /// <summary>

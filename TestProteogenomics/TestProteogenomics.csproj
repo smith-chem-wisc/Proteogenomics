@@ -38,6 +38,9 @@
     <Reference Include="Bio.Core, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\NetBio.Core.3.0.0-alpha\lib\netstandard2.0\Bio.Core.dll</HintPath>
     </Reference>
+    <Reference Include="Bio.VCF.ajc, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Bio.VCF.ajc.0.0.57\lib\netstandard2.0\Bio.VCF.ajc.dll</HintPath>
+    </Reference>
     <Reference Include="Chemistry, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\mzLib.1.0.308\lib\net471\Chemistry.dll</HintPath>
     </Reference>
@@ -154,7 +157,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Proteogenomics\Proteogenomics.csproj">
-      <Project>{a66240f2-c289-4e1e-a75a-04171d836d69}</Project>
+      <Project>{82b4a1b5-6d3b-4338-9127-3ba31eef76d4}</Project>
       <Name>Proteogenomics</Name>
     </ProjectReference>
   </ItemGroup>

@@ -462,7 +462,7 @@ namespace Proteogenomics
 
         /// <summary>
         /// Calculate distance from transcript start to a position
-        /// mRNA is roughly the same than cDNA.Strictly speaking mRNA
+        /// mRNA is roughly the same than cDNA. Strictly speaking mRNA
         /// has a poly-A tail and 5'cap.
         /// </summary>
         /// <param name="pos"></param>
@@ -795,15 +795,12 @@ namespace Proteogenomics
             }
 
             // Append all exon sequences
-            IAlphabet alphabet = Alphabets.DNA;
+            IAlphabet alphabet = Alphabets.AmbiguousDNA;
             bool missingSequence = false;
             foreach (Exon exon in exons)
             {
                 missingSequence |= exon.Sequence == null; // If there is no sequence, we are in trouble
                 sequence.Append(SequenceExtensions.ConvertToString(exon.Sequence)); // reverse complemented for reverse strand during loading
-                alphabet = alphabet != null && alphabet.HasAmbiguity && !exon.Sequence.Alphabet.HasAmbiguity ? // keep the alphabet with the most characters
-                    alphabet :
-                    exon.Sequence.Alphabet;
             }
 
             if (missingSequence)
@@ -904,17 +901,16 @@ namespace Proteogenomics
 
             // Figure out the stop codon from translation
             ISequence spliced = SplicedRNA();
-            ISequence translateThis = spliced.GetSubSequence(cdsStartInMrna, spliced.Count - cdsStartInMrna + 1);
+            ISequence translateThis = spliced.GetSubSequence(cdsStartInMrna, spliced.Count - cdsStartInMrna);
             ISequence proteinSequence = Translation.OneFrameTranslation(translateThis, Gene.Chromosome.Mitochondrial);
             int stopIdx = proteinSequence.Select(x => x).ToList().IndexOf(Alphabets.Protein.Ter);
             if (stopIdx < 0) { return; } // no stop codon in sight
-            long endInMrna = cdsStartInMrna +  stopIdx * CodonChange.CODON_SIZE - 1;
+            long endInMrna = cdsStartInMrna +  (stopIdx + 1) * CodonChange.CODON_SIZE - 1; // include the stop codon in CDS
             long lengthInMrna = endInMrna - cdsStartInMrna + 1;
 
             // Figure out the stop index on the chromosome
-            long cdsEndInChrom = cdsStartInChrom;
-            long utr5ishstart = IsStrandPlus() ? Exons.Min(x => x.OneBasedStart) : cdsStartInChrom - 1;
-            long utr5ishend = IsStrandPlus() ?  cdsStartInChrom + 1 : Exons.Max(x => x.OneBasedEnd);
+            long utr5ishstart = IsStrandPlus() ? Exons.Min(x => x.OneBasedStart) : cdsStartInChrom + 1;
+            long utr5ishend = IsStrandPlus() ?  cdsStartInChrom - 1 : Exons.Max(x => x.OneBasedEnd);
             Interval utr5ish = new Interval(null, "", Strand, utr5ishstart, utr5ishend, null);
             var intervals = SortedStrand(Exons.SelectMany(x => x.Minus(utr5ish)).ToList());
             long lengthSoFar = 0;

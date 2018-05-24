@@ -97,10 +97,12 @@ namespace TestProteogenomics
         [Test]
         public void gffAppliedToOther()
         {
-            GeneModel geneModel = new GeneModel(genome, Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_gff.gff3"));
-            GeneModel additional = new GeneModel(genome, Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_pacbio.gff3"));
-            geneModel.Merge(additional);
-            List<Protein> proteins = additional.Genes.SelectMany(g => g.Translate(true)).ToList();
+            string referenceGff = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_gff.gff3");
+            string alternateGff = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_pacbio.gff3");
+            GeneModel r = new GeneModel(genome, referenceGff);
+            GeneModel a = new GeneModel(genome, alternateGff);
+            a.CreateCDSFromAnnotatedStartCodons(r);
+            List<Protein> proteins = a.Genes.SelectMany(g => g.Translate(true)).ToList();
 
             //Forward strand, single coding region
             Assert.AreEqual("PB2015.1.1", proteins[0].Accession);

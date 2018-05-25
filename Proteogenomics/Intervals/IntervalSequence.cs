@@ -9,15 +9,8 @@ namespace Proteogenomics
     public class IntervalSequence
      : Interval
     {
-        #region Public Constructors
-
-        /// <summary>
-        /// Sequence using BioDotNet interface
-        /// </summary>
-        public ISequence Sequence { get; set; }
-
-        public IntervalSequence(Interval parent, string chromID, string strand, long oneBasedStart, long oneBasedEnd, ISequence sequence, HashSet<Variant> variants)
-            : base(parent, chromID, strand, oneBasedStart, oneBasedEnd, variants)
+        public IntervalSequence(Interval parent, string chromID, string source, string strand, long oneBasedStart, long oneBasedEnd, ISequence sequence, HashSet<Variant> variants)
+            : base(parent, chromID, source, strand, oneBasedStart, oneBasedEnd, variants)
         {
             Sequence = sequence;
         }
@@ -28,7 +21,10 @@ namespace Proteogenomics
             Sequence = sequence;
         }
 
-        #endregion Public Constructors
+        /// <summary>
+        /// Sequence using BioDotNet interface
+        /// </summary>
+        public ISequence Sequence { get; set; }
 
         #region Variant Application Methods
 

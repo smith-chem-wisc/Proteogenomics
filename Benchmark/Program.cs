@@ -15,9 +15,38 @@ namespace Benchmark
     {
         public static void Main(string[] args)
         {
-            SameProteins();
+            PacBioCds();
+            //SameProteins();
         }
 
+        /// <summary>
+        /// Annotates PacBio transcript model for MCF7 with start codons in the reference model
+        /// </summary>
+        private static void PacBioCds()
+        {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            Genome genome = new Genome(@"E:\ProjectsActive\MCF7PacBio\Homo_sapiens.GRCh37.73.dna.primary_assembly.fa");
+            string referenceGff = @"E:\ProjectsActive\MCF7PacBio\Homo_sapiens.GRCh37.73.gtf";
+            string alternateGff = @"E:\ProjectsActive\MCF7PacBio\IsoSeq_MCF72015edition_polished.unimapped.ensembl.unimapped.gff";
+            GeneModel r = new GeneModel(genome, referenceGff);
+            GeneModel a = new GeneModel(genome, alternateGff);
+            a.CreateCDSFromAnnotatedStartCodons(r);
+            a.PrintToGTF(@"E:\ProjectsActive\MCF7PacBio\CDSAnnotated_IsoSeq_MCF7_2015edition_polished.unimapped.gff");
+
+            stopwatch.Stop();
+            Console.WriteLine("Finished checking that all proteins are the same.");
+            Console.WriteLine("Time elapsed: " + stopwatch.Elapsed.Minutes.ToString() + " minutes and " + stopwatch.Elapsed.Seconds.ToString() + " seconds.");
+            Console.WriteLine("Result: there are " + a.Genes.Sum(g => g.Transcripts.Count) + " PacBio transcript isoforms");
+            Console.WriteLine("Result: " + a.Genes.Sum(g => g.Transcripts.Count(t => t.IsProteinCoding())) + " PacBio transcript isoforms are new annotated as protein coding");
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
+        }
+
+        /// <summary>
+        /// Times and checks that all proteins in the pep.all.fasta protein fasta file are the same as are output by this library
+        /// </summary>
         private static void SameProteins()
         {
             Stopwatch stopwatch = new Stopwatch();

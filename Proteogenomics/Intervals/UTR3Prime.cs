@@ -5,8 +5,8 @@ namespace Proteogenomics
     public class UTR3Prime
         : UTR
     {
-        public UTR3Prime(Exon parent, string chromID, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants)
-            : base(parent, chromID, strand, oneBasedStart, oneBasedEnd, variants)
+        public UTR3Prime(Exon parent, string chromID, string source, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants)
+            : base(parent, chromID, source, strand, oneBasedStart, oneBasedEnd, variants)
         {
         }
 
@@ -14,6 +14,11 @@ namespace Proteogenomics
             : base(utr)
         {
         }
+
+        /// <summary>
+        /// Feature name used for writing GTF files
+        /// </summary>
+        public override string FeatureType { get; } = "three_prime_UTR";
 
         public override bool is3Prime()
         {

@@ -146,7 +146,7 @@
     <None Include="TestData\sample_gtf.gtf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="TestData\sample_pacbio.gff3">
+    <None Include="TestData\sample_pacbio.gtf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="TestFastqs\mapper.fastq">

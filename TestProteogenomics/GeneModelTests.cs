@@ -60,7 +60,7 @@ namespace TestProteogenomics
         }
 
         [Test]
-        public void gtfBasics()
+        public void GtfBasics()
         {
             GeneModel geneModel = new GeneModel(genome, Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_gtf.gtf"));
             Assert.AreEqual(165, geneModel.Genes.SelectMany(g => g.Transcripts).Count());
@@ -68,7 +68,7 @@ namespace TestProteogenomics
         }
 
         [Test]
-        public void gffBasics()
+        public void GffBasics()
         {
             GeneModel geneModel = new GeneModel(genome, Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_gff.gff3"));
             Assert.AreEqual(148, geneModel.Genes.SelectMany(g => g.Transcripts).Count());
@@ -92,10 +92,10 @@ namespace TestProteogenomics
         }
 
         [Test]
-        public void gffAppliedToOther()
+        public void GffAppliedToOther()
         {
             string referenceGff = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_gff.gff3");
-            string alternateGff = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_pacbio.gff3");
+            string alternateGff = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_pacbio.gtf");
             GeneModel r = new GeneModel(genome, referenceGff);
             GeneModel a = new GeneModel(genome, alternateGff);
             a.CreateCDSFromAnnotatedStartCodons(r);
@@ -116,6 +116,17 @@ namespace TestProteogenomics
                 "PKTSSSQTLQAHLLLPGGINRPSFDLRTASAGPALASQGLFPGPALASWQLPQAKFLPAC" +
                 "QQPQQAQLLPHSGPFRPNL",
                 proteins[1].BaseSequence);
+        }
+
+        [Test]
+        public void OutputGtfFromGeneModel()
+        {
+            string referenceGff = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_gff.gff3");
+            string alternateGff = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_pacbio.gtf");
+            GeneModel r = new GeneModel(genome, referenceGff);
+            GeneModel a = new GeneModel(genome, alternateGff);
+            a.CreateCDSFromAnnotatedStartCodons(r);
+            a.PrintToGTF(Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_pacbio_merged.gtf"));
         }
     }
 }

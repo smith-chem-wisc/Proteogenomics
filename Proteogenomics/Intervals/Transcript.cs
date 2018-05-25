@@ -38,11 +38,10 @@ namespace Proteogenomics
         /// <param name="gene"></param>
         /// <param name="metadata"></param>
         /// <param name="ProteinID"></param>
-        public Transcript(string id, string version, Gene gene, string source, string strand, long oneBasedStart, long oneBasedEnd, string proteinID, HashSet<Variant> variants, MetadataListItem<List<string>> featureMetadata)
+        public Transcript(string id, Gene gene, string source, string strand, long oneBasedStart, long oneBasedEnd, string proteinID, HashSet<Variant> variants, MetadataListItem<List<string>> featureMetadata)
             : base(gene, gene.ChromosomeID, source, strand, oneBasedStart, oneBasedEnd, variants)
         {
             ID = id;
-            Version = version;
             ProteinID = proteinID ?? id;
             Gene = gene;
             Variants = variants ?? new HashSet<Variant>();
@@ -54,7 +53,7 @@ namespace Proteogenomics
         /// </summary>
         /// <param name="transcript"></param>
         public Transcript(Transcript transcript)
-            : this(transcript.ID, transcript.Version, transcript.Gene, transcript.Source, transcript.Strand,
+            : this(transcript.ID, transcript.Gene, transcript.Source, transcript.Strand,
                   transcript.OneBasedStart, transcript.OneBasedEnd, transcript.ProteinID, transcript.Variants, transcript.FeatureMetadata)
         {
             VariantAnnotations = new List<string>(transcript.VariantAnnotations);
@@ -68,11 +67,6 @@ namespace Proteogenomics
         /// The transcript ID
         /// </summary>
         public string ID { get; set; }
-
-        /// <summary>
-        /// The transcript version
-        /// </summary>
-        public string Version { get; set; }
 
         /// <summary>
         /// The parent gene containing this transcript.
@@ -189,7 +183,7 @@ namespace Proteogenomics
         public override Interval ApplyVariant(Variant variant)
         {
             Interval interval = base.ApplyVariant(variant);
-            Transcript transcript = new Transcript(ID, Version, Gene, interval.Source, interval.Strand, interval.OneBasedStart, interval.OneBasedEnd, ProteinID, interval.Variants, FeatureMetadata);
+            Transcript transcript = new Transcript(ID, Gene, interval.Source, interval.Strand, interval.OneBasedStart, interval.OneBasedEnd, ProteinID, interval.Variants, FeatureMetadata);
             for (int i = 0; i < CodingDomainSequences.Count; i++)
             {
                 if (CodingDomainSequences[i].Includes(variant))
@@ -894,25 +888,24 @@ namespace Proteogenomics
         /// Creates coding domains based on another annotated transcript
         /// </summary>
         /// <param name="withCDS"></param>
-        public void CreateCDSFromAnnotatedStartCodons(Transcript withCDS)
+        /// <returns>true if this transcript was annotated; false if the transcript with CDS did not lead to an annotation</returns>
+        public bool CreateCDSFromAnnotatedStartCodons(Transcript withCDS)
         {
             // Nothing to do if null input
-            if (withCDS == null)
-            {
-                return;
-            }
+            if (withCDS == null) { return false; }
 
             // Figure out the start position
             CDS firstCds = withCDS.CdsSortedStrand.First();
             long cdsStartInChrom = IsStrandPlus() ? firstCds.OneBasedStart : firstCds.OneBasedEnd;
             long cdsStartInMrna = BaseNumber2MRnaPos(cdsStartInChrom);
+            if (cdsStartInMrna < 0) { return false; } // the coding start wasn't within any of the exons of this transcript
 
             // Figure out the stop codon from translation
             ISequence spliced = SplicedRNA();
             ISequence translateThis = spliced.GetSubSequence(cdsStartInMrna, spliced.Count - cdsStartInMrna);
             ISequence proteinSequence = Translation.OneFrameTranslation(translateThis, Gene.Chromosome.Mitochondrial);
             int stopIdx = proteinSequence.Select(x => x).ToList().IndexOf(Alphabets.Protein.Ter);
-            if (stopIdx < 0) { return; } // no stop codon in sight
+            if (stopIdx < 0) { return false; } // no stop codon in sight
             long endInMrna = cdsStartInMrna + (stopIdx + 1) * CodonChange.CODON_SIZE - 1; // include the stop codon in CDS
             long lengthInMrna = endInMrna - cdsStartInMrna + 1;
 
@@ -947,6 +940,7 @@ namespace Proteogenomics
             }
 
             SetRegions(this);
+            return true;
         }
 
         /// <summary>
@@ -1298,7 +1292,7 @@ namespace Proteogenomics
 
         private static MetadataListItem<List<string>> CDSFeatureMetadata(CDS cds, Exon exon)
         {
-            string cdsAttributes = exon.GetGtfAttributes() + "; protein_id \"" + (cds.Parent as Transcript).ProteinID + "\";";
+            string cdsAttributes = exon.GetGtfAttributes() + " protein_id \"" + (cds.Parent as Transcript).ProteinID + "\";";
             var feature = new MetadataListItem<List<string>>(cds.FeatureType, cdsAttributes);
             feature.SubItems["source"] = new List<string> { cds.Source.ToString() };
             feature.SubItems["start"] = new List<string> { cds.OneBasedStart.ToString() };

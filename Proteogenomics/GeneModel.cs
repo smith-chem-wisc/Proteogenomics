@@ -114,7 +114,6 @@ namespace Proteogenomics
         {
             bool hasGeneId = attributes.TryGetValue("gene_id", out string geneId);
             bool hasTranscriptId = attributes.TryGetValue("transcript_id", out string transcriptId);
-            bool hasTranscriptVersion = attributes.TryGetValue("version", out string transcriptVersion) && hasTranscriptId;
             bool hasExonId = attributes.TryGetValue("exon_id", out string exonId);
             bool hasProteinId = attributes.TryGetValue("protein_id", out string proteinId);
             bool hasSource = feature.SubItems.TryGetValue("source", out List<string> sourceish); // false if empty ("." in GFF format)
@@ -141,7 +140,7 @@ namespace Proteogenomics
                     Transcript.SetRegions(currentTranscript);
                     currentTranscript.FrameCorrection();
                 }
-                currentTranscript = new Transcript(transcriptId, transcriptVersion, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
+                currentTranscript = new Transcript(transcriptId, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
                 currentGene.Transcripts.Add(currentTranscript);
                 GenomeForest.Add(currentTranscript);
             }
@@ -181,17 +180,9 @@ namespace Proteogenomics
         public void ProcessGtfFeature(MetadataListItem<List<string>> feature, long oneBasedStart, long oneBasedEnd, Chromosome chrom, Dictionary<string, string> attributes)
         {
             bool hasGeneId = attributes.TryGetValue("gene_id", out string geneId);
-            bool hasGeneName = attributes.TryGetValue("gene_name", out string geneName);
-            bool hasGeneVersion = attributes.TryGetValue("gene_version", out string geneVersion);
-            bool hasGeneBiotype = attributes.TryGetValue("gene_biotype", out string geneBiotype);
             bool hasTranscriptId = attributes.TryGetValue("transcript_id", out string transcriptId);
-            bool hasTranscriptVersion = attributes.TryGetValue("transcript_version", out string transcriptVersion);
-            bool hasTranscriptBiotype = attributes.TryGetValue("transcript_biotype", out string transcriptBiotype);
+            bool hasProteinId = attributes.TryGetValue("protein_id", out string proteinId);
             bool hasExonId = attributes.TryGetValue("exon_id", out string exonId);
-            bool hasExonVersion = attributes.TryGetValue("exon_version", out string exonVersion);
-            bool hasExonNumber = attributes.TryGetValue("exon_number", out string exonNumber);
-            bool hasNearestRef = attributes.TryGetValue("nearest_ref", out string nearestRef); // Cufflinks
-            bool hasClassCode = attributes.TryGetValue("class_code", out string classCode); // Cufflinks
             bool hasSource = feature.SubItems.TryGetValue("source", out List<string> sourceish);
             bool hasStrand = feature.SubItems.TryGetValue("strand", out List<string> strandish);
             bool hasFrame = feature.SubItems.TryGetValue("frame", out List<string> framey);
@@ -212,7 +203,7 @@ namespace Proteogenomics
                     GenomeForest.Add(currentGene);
                 }
 
-                currentTranscript = new Transcript(transcriptId, transcriptVersion, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
+                currentTranscript = new Transcript(transcriptId, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
                 currentGene.Transcripts.Add(currentTranscript);
                 GenomeForest.Add(currentTranscript);
             }
@@ -233,7 +224,7 @@ namespace Proteogenomics
                         Transcript.SetRegions(currentTranscript);
                         currentTranscript.FrameCorrection();
                     }
-                    currentTranscript = new Transcript(transcriptId, transcriptVersion, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
+                    currentTranscript = new Transcript(transcriptId, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
                     currentGene.Transcripts.Add(currentTranscript);
                     GenomeForest.Add(currentTranscript);
                 }
@@ -243,18 +234,13 @@ namespace Proteogenomics
                     ISequence exon_dna = chrom.Sequence.GetSubSequence(oneBasedStart - 1, oneBasedEnd - oneBasedStart + 1);
                     Exon exon = new Exon(currentTranscript, currentTranscript.IsStrandPlus() ? exon_dna : exon_dna.GetReverseComplementedSequence(),
                         source, oneBasedStart, oneBasedEnd, chrom.Sequence.ID, strand, null, feature);
-                    if (exon.Length() > 0)
-                    {
-                        currentTranscript.Exons.Add(exon);
-                    }
+                    if (exon.Length() > 0) { currentTranscript.Exons.Add(exon); }
                 }
                 else if (feature.Key == "CDS")
                 {
                     CDS cds = new CDS(currentTranscript, chrom.Sequence.ID, source, strand, oneBasedStart, oneBasedEnd, null, frame);
-                    if (cds.Length() > 0)
-                    {
-                        currentTranscript.CodingDomainSequences.Add(cds);
-                    }
+                    if (hasProteinId) { currentTranscript.ProteinID = proteinId; }
+                    if (cds.Length() > 0) { currentTranscript.CodingDomainSequences.Add(cds); }
                 }
                 else
                 { // nothing to do
@@ -346,6 +332,7 @@ namespace Proteogenomics
         /// <param name="referenceGeneModel"></param>
         public void CreateCDSFromAnnotatedStartCodons(GeneModel referenceGeneModel)
         {
+            referenceGeneModel.GenomeForest.Build(); // so we don't need to lock the IntervalTree if we end up parallelizing this method
             foreach (Gene g in Genes)
             {
                 if (!referenceGeneModel.GenomeForest.Forest.TryGetValue(g.Chromosome.FriendlyName, out IntervalTree tree)) { continue; }
@@ -353,7 +340,13 @@ namespace Proteogenomics
                 {
                     List<Transcript> referenceTranscripts = tree.Query(t).OfType<Transcript>().ToList();
                     List<Transcript> referenceTranscriptsWithCDS = referenceTranscripts.Where(tt => tt.IsProteinCoding()).ToList();
-                    t.CreateCDSFromAnnotatedStartCodons(referenceTranscriptsWithCDS.FirstOrDefault());
+                    foreach (Transcript tWithCds in referenceTranscriptsWithCDS)
+                    {
+                        lock (tWithCds)
+                        {
+                            if (t.CreateCDSFromAnnotatedStartCodons(tWithCds)) { break; } // for now, only use the first annotation found if any
+                        }
+                    }
                 }
             }
         }
@@ -369,15 +362,13 @@ namespace Proteogenomics
                 GffFormatter gff = new GffFormatter();
                 foreach (Chromosome chrom in Genome.Chromosomes)
                 {
-                    var features = new List<MetadataListItem<List<string>>>();
-                    chrom.Sequence.Metadata["features"] = features;
-                    GenomeForest.Forest.TryGetValue(chrom.FriendlyName, out var tree);
-                    if (tree == null) { continue; }
-                    List<Gene> genes = tree.Intervals.OfType<Gene>().OrderBy(g => g.OneBasedStart).ToList();
-                    foreach (Gene gene in genes)
+                    if (GenomeForest.Forest.TryGetValue(chrom.FriendlyName, out var tree))
                     {
+                        IEnumerable<Gene> genes = tree.Intervals.OfType<Gene>().OrderBy(g => g.OneBasedStart);
+                        chrom.Sequence.Metadata["features"] = genes.SelectMany(g => g.GetFeatures()).ToList();
+                        chrom.Sequence.ID = chrom.FriendlyName; // shortens to "1" from "1 dna:chromosome chromosome:GRCh37:1:1:249250621:1 REF"
+                        gff.Format(stream, chrom.Sequence);
                     }
-                    gff.Format(stream, chrom.Sequence);
                 }
             }
         }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Bio;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -14,10 +15,11 @@ namespace Proteogenomics
         /// <param name="strand"></param>
         /// <param name="oneBasedStart"></param>
         /// <param name="oneBasedEnd"></param>
-        public Interval(Interval parent, string chromosomeID, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants)
+        public Interval(Interval parent, string chromosomeID, string source, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants)
         {
             Parent = parent;
             ChromosomeID = chromosomeID;
+            Source = source;
             Strand = strand;
             OneBasedStart = oneBasedStart;
             OneBasedEnd = oneBasedEnd;
@@ -29,7 +31,7 @@ namespace Proteogenomics
         /// </summary>
         /// <param name="interval"></param>
         public Interval(Interval interval) :
-            this(interval.Parent, interval.ChromosomeID, interval.Strand, interval.OneBasedStart, interval.OneBasedEnd, interval.Variants)
+            this(interval.Parent, interval.ChromosomeID, interval.Source, interval.Strand, interval.OneBasedStart, interval.OneBasedEnd, interval.Variants)
         {
         }
 
@@ -41,6 +43,11 @@ namespace Proteogenomics
         /// Chromosome name
         /// </summary>
         public string ChromosomeID { get; set; }
+
+        /// <summary>
+        /// Source name
+        /// </summary>
+        public string Source { get; set; }
 
         /// <summary>
         /// Strand of the chromosome that this exon is on.
@@ -71,6 +78,11 @@ namespace Proteogenomics
         /// Variants contained in this interval
         /// </summary>
         public HashSet<Variant> Variants { get; set; } = new HashSet<Variant>();
+
+        /// <summary>
+        /// Feature name used for writing GTF files
+        /// </summary>
+        public virtual string FeatureType { get; } = "interval";
 
         /// <summary>
         /// Get the median of a set of intervals
@@ -303,7 +315,7 @@ namespace Proteogenomics
                 // Initialize
                 if (latest < 0)
                 {
-                    latest = fromEnd ? 
+                    latest = fromEnd ?
                         m.OneBasedEnd + 1 :
                         m.OneBasedStart - 1;
                 }
@@ -345,18 +357,18 @@ namespace Proteogenomics
                 else if (interval.OneBasedStart <= OneBasedStart && interval.OneBasedEnd < OneBasedEnd)
                 {
                     // 'interval' overlaps left part of 'this' => Include right part of 'this'
-                    intervals.Add(new Interval(Parent, ChromosomeID, Strand, interval.OneBasedEnd + 1, OneBasedEnd, Variants));
+                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, interval.OneBasedEnd + 1, OneBasedEnd, Variants));
                 }
                 else if (OneBasedStart < interval.OneBasedStart && OneBasedEnd <= interval.OneBasedEnd)
                 {
                     // 'interval' overlaps right part of 'this' => Include left part of 'this'
-                    intervals.Add(new Interval(Parent, ChromosomeID, Strand, OneBasedStart, interval.OneBasedStart - 1, Variants));
+                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, OneBasedStart, interval.OneBasedStart - 1, Variants));
                 }
                 else if (OneBasedStart < interval.OneBasedStart && interval.OneBasedEnd < OneBasedEnd)
                 {
                     // 'interval' overlaps middle of 'this' => Include left and right part of 'this'
-                    intervals.Add(new Interval(Parent, ChromosomeID, Strand, OneBasedStart, interval.OneBasedStart - 1, Variants));
-                    intervals.Add(new Interval(Parent, ChromosomeID, Strand, interval.OneBasedEnd + 1, OneBasedEnd, Variants));
+                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, OneBasedStart, interval.OneBasedStart - 1, Variants));
+                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, interval.OneBasedEnd + 1, OneBasedEnd, Variants));
                 }
                 else
                 {
@@ -520,6 +532,25 @@ namespace Proteogenomics
             long end = Math.Min(this.OneBasedEnd, other.OneBasedEnd);
             if (end < start) { return 0; }
             return end - start + 1;
+        }
+
+        public MetadataListItem<List<string>> GetGtfFeatureMetadata()
+        {
+            var feature = new MetadataListItem<List<string>>(FeatureType, GetGtfAttributes());
+            feature.SubItems["source"] = new List<string> { Source.ToString() };
+            feature.SubItems["start"] = new List<string> { OneBasedStart.ToString() };
+            feature.SubItems["end"] = new List<string> { OneBasedEnd.ToString() };
+            if (Strand != ".") { feature.SubItems["strand"] = new List<string> { Strand.ToString() }; } // might take in features without strand later on
+            return feature;
+        }
+
+        /// <summary>
+        /// Gets the attributes string as free text (default is empty string)
+        /// </summary>
+        /// <returns></returns>
+        public virtual string GetGtfAttributes()
+        {
+            return "";
         }
     }
 }

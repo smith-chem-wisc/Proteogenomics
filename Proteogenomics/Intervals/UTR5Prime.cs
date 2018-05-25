@@ -13,14 +13,19 @@ namespace Proteogenomics
     {
         private List<UTR5Prime> UTRs { get; set; }
 
-        public UTR5Prime(Exon parent, string chromID, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants) :
-            base(parent, chromID, strand, oneBasedStart, oneBasedEnd, variants)
+        public UTR5Prime(Exon parent, string chromID, string source, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants) :
+            base(parent, chromID, source, strand, oneBasedStart, oneBasedEnd, variants)
         {
         }
 
         public UTR5Prime(UTR5Prime utr) : base(utr)
         {
         }
+
+        /// <summary>
+        /// Feature name used for writing GTF files
+        /// </summary>
+        public override string FeatureType { get; } = "five_prime_UTR";
 
         public override bool is3Prime()
         {

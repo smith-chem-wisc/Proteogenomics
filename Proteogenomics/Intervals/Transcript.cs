@@ -14,7 +14,6 @@ namespace Proteogenomics
     public class Transcript
         : Interval
     {
-
         /// <summary>
         /// Used to construct upstream and downstream reginos
         /// </summary>
@@ -39,14 +38,15 @@ namespace Proteogenomics
         /// <param name="gene"></param>
         /// <param name="metadata"></param>
         /// <param name="ProteinID"></param>
-        public Transcript(string id, string version, Gene gene, string strand, long oneBasedStart, long oneBasedEnd, string proteinID, HashSet<Variant> variants)
-            : base(gene, gene.ChromosomeID, strand, oneBasedStart, oneBasedEnd, variants)
+        public Transcript(string id, string version, Gene gene, string source, string strand, long oneBasedStart, long oneBasedEnd, string proteinID, HashSet<Variant> variants, MetadataListItem<List<string>> featureMetadata)
+            : base(gene, gene.ChromosomeID, source, strand, oneBasedStart, oneBasedEnd, variants)
         {
             ID = id;
             Version = version;
             ProteinID = proteinID ?? id;
             Gene = gene;
             Variants = variants ?? new HashSet<Variant>();
+            FeatureMetadata = featureMetadata;
         }
 
         /// <summary>
@@ -54,12 +54,13 @@ namespace Proteogenomics
         /// </summary>
         /// <param name="transcript"></param>
         public Transcript(Transcript transcript)
-            : this(transcript.ID, transcript.Version, transcript.Gene, transcript.Strand, transcript.OneBasedStart, transcript.OneBasedEnd, transcript.ProteinID, transcript.Variants)
+            : this(transcript.ID, transcript.Version, transcript.Gene, transcript.Source, transcript.Strand,
+                  transcript.OneBasedStart, transcript.OneBasedEnd, transcript.ProteinID, transcript.Variants, transcript.FeatureMetadata)
         {
             VariantAnnotations = new List<string>(transcript.VariantAnnotations);
             ProteinSequenceVariations = new HashSet<SequenceVariation>(transcript.ProteinSequenceVariations);
-            Exons = new List<Exon>(transcript.Exons.Select(x => new Exon(this, x.Sequence, x.OneBasedStart, x.OneBasedEnd, x.ChromosomeID, x.Strand, x.Variants)));
-            CodingDomainSequences = new List<CDS>(transcript.CodingDomainSequences.Select(cds => new CDS(this, cds.ChromosomeID, cds.Strand, cds.OneBasedStart, cds.OneBasedEnd, cds.Variants, cds.StartFrame)));
+            Exons = new List<Exon>(transcript.Exons.Select(x => new Exon(this, x.Sequence, x.Source, x.OneBasedStart, x.OneBasedEnd, x.ChromosomeID, x.Strand, x.Variants, x.FeatureMetadata)));
+            CodingDomainSequences = new List<CDS>(transcript.CodingDomainSequences.Select(cds => new CDS(this, cds.ChromosomeID, cds.Source, cds.Strand, cds.OneBasedStart, cds.OneBasedEnd, cds.Variants, cds.StartFrame)));
             SetRegions(this);
         }
 
@@ -174,6 +175,13 @@ namespace Proteogenomics
         public HashSet<SequenceVariation> ProteinSequenceVariations { get; set; } = new HashSet<SequenceVariation>();
 
         /// <summary>
+        /// Feature name used for writing GTF files
+        /// </summary>
+        public override string FeatureType { get; } = "transcript";
+
+        public MetadataListItem<List<string>> FeatureMetadata { get; private set; }
+
+        /// <summary>
         /// Apply the second (alternate) allele of this variant and adjust the start and stop indices
         /// </summary>
         /// <param name="variant"></param>
@@ -181,7 +189,7 @@ namespace Proteogenomics
         public override Interval ApplyVariant(Variant variant)
         {
             Interval interval = base.ApplyVariant(variant);
-            Transcript transcript = new Transcript(ID, Version, Gene, interval.Strand, interval.OneBasedStart, interval.OneBasedEnd, ProteinID, interval.Variants);
+            Transcript transcript = new Transcript(ID, Version, Gene, interval.Source, interval.Strand, interval.OneBasedStart, interval.OneBasedEnd, ProteinID, interval.Variants, FeatureMetadata);
             for (int i = 0; i < CodingDomainSequences.Count; i++)
             {
                 if (CodingDomainSequences[i].Includes(variant))
@@ -282,7 +290,7 @@ namespace Proteogenomics
 
             // if heterozygous and nonsynonymous, do combinitorics: determine which is the other allele (reference or another alternate),
             // and add that first allele, too
-            if (variant.GenotypeType == GenotypeType.HETEROZYGOUS && nonsynonymous) 
+            if (variant.GenotypeType == GenotypeType.HETEROZYGOUS && nonsynonymous)
             {
                 Transcript anotherTranscript;
                 if (variant.ReferenceAlleleString == variant.FirstAlleleString) // other allele is the reference string
@@ -905,13 +913,13 @@ namespace Proteogenomics
             ISequence proteinSequence = Translation.OneFrameTranslation(translateThis, Gene.Chromosome.Mitochondrial);
             int stopIdx = proteinSequence.Select(x => x).ToList().IndexOf(Alphabets.Protein.Ter);
             if (stopIdx < 0) { return; } // no stop codon in sight
-            long endInMrna = cdsStartInMrna +  (stopIdx + 1) * CodonChange.CODON_SIZE - 1; // include the stop codon in CDS
+            long endInMrna = cdsStartInMrna + (stopIdx + 1) * CodonChange.CODON_SIZE - 1; // include the stop codon in CDS
             long lengthInMrna = endInMrna - cdsStartInMrna + 1;
 
             // Figure out the stop index on the chromosome
             long utr5ishstart = IsStrandPlus() ? Exons.Min(x => x.OneBasedStart) : cdsStartInChrom + 1;
-            long utr5ishend = IsStrandPlus() ?  cdsStartInChrom - 1 : Exons.Max(x => x.OneBasedEnd);
-            Interval utr5ish = new Interval(null, "", Strand, utr5ishstart, utr5ishend, null);
+            long utr5ishend = IsStrandPlus() ? cdsStartInChrom - 1 : Exons.Max(x => x.OneBasedEnd);
+            Interval utr5ish = new Interval(null, "", Source, Strand, utr5ishstart, utr5ishend, null);
             var intervals = SortedStrand(Exons.SelectMany(x => x.Minus(utr5ish)).ToList());
             long lengthSoFar = 0;
             foreach (Interval y in intervals)
@@ -919,20 +927,20 @@ namespace Proteogenomics
                 long lengthSum = lengthSoFar + y.Length();
                 if (lengthSum <= lengthInMrna) // add this whole interval
                 {
-                    var toAdd = new CDS(this, ChromosomeID, Strand, y.OneBasedStart, y.OneBasedEnd, null, 0);
+                    var toAdd = new CDS(this, ChromosomeID, Source, Strand, y.OneBasedStart, y.OneBasedEnd, null, 0);
                     CodingDomainSequences.Add(toAdd);
                     lengthSoFar += toAdd.Length();
                 }
                 else if (lengthSoFar < lengthInMrna) // chop off part of this interval
                 {
                     long chopLength = lengthSum - lengthInMrna;
-                    long start = IsStrandPlus() ? 
-                        y.OneBasedStart : 
+                    long start = IsStrandPlus() ?
+                        y.OneBasedStart :
                         y.OneBasedStart + chopLength;
-                    long end = IsStrandPlus() ? 
-                        y.OneBasedEnd - chopLength : 
+                    long end = IsStrandPlus() ?
+                        y.OneBasedEnd - chopLength :
                         y.OneBasedEnd;
-                    var toAdd = new CDS(this, ChromosomeID, Strand, start, end, null, 0);
+                    var toAdd = new CDS(this, ChromosomeID, Source, Strand, start, end, null, 0);
                     CodingDomainSequences.Add(toAdd);
                     lengthSoFar += toAdd.Length();
                 }
@@ -1071,13 +1079,13 @@ namespace Proteogenomics
                 UTR toAdd = null;
                 if (IsStrandPlus())
                 {
-                    if (interval.OneBasedEnd <= codingMin) { toAdd = new UTR5Prime(x, x.ChromosomeID, x.Strand, interval.OneBasedStart, interval.OneBasedEnd, Variants); }
-                    else if (interval.OneBasedStart >= codingMax) { toAdd = new UTR3Prime(x, x.ChromosomeID, x.Strand, interval.OneBasedStart, interval.OneBasedEnd, Variants); }
+                    if (interval.OneBasedEnd <= codingMin) { toAdd = new UTR5Prime(x, x.ChromosomeID, x.Source, x.Strand, interval.OneBasedStart, interval.OneBasedEnd, Variants); }
+                    else if (interval.OneBasedStart >= codingMax) { toAdd = new UTR3Prime(x, x.ChromosomeID, x.Source, x.Strand, interval.OneBasedStart, interval.OneBasedEnd, Variants); }
                 }
                 else
                 {
-                    if (interval.OneBasedStart >= codingMax) { toAdd = new UTR5Prime(x, x.ChromosomeID, x.Strand, interval.OneBasedStart, interval.OneBasedEnd, Variants); }
-                    else if (interval.OneBasedEnd <= codingMin) { toAdd = new UTR3Prime(x, x.ChromosomeID, x.Strand, interval.OneBasedStart, interval.OneBasedEnd, Variants); }
+                    if (interval.OneBasedStart >= codingMax) { toAdd = new UTR5Prime(x, x.ChromosomeID, x.Source, x.Strand, interval.OneBasedStart, interval.OneBasedEnd, Variants); }
+                    else if (interval.OneBasedEnd <= codingMin) { toAdd = new UTR3Prime(x, x.ChromosomeID, x.Source, x.Strand, interval.OneBasedStart, interval.OneBasedEnd, Variants); }
                 }
 
                 // OK?
@@ -1106,13 +1114,13 @@ namespace Proteogenomics
 
             if (IsStrandPlus())
             {
-                if (beforeStart < beforeEnd) { Upstream = new Upstream(this, chromosomeSequence.ChromosomeID, Strand, beforeStart, beforeEnd, null); }
-                if (afterStart < afterEnd) { Downstream = new Downstream(this, chromosomeSequence.ChromosomeID, Strand, afterStart, afterEnd, null); }
+                if (beforeStart < beforeEnd) { Upstream = new Upstream(this, chromosomeSequence.ChromosomeID, Source, Strand, beforeStart, beforeEnd, null); }
+                if (afterStart < afterEnd) { Downstream = new Downstream(this, chromosomeSequence.ChromosomeID, Source, Strand, afterStart, afterEnd, null); }
             }
             else
             {
-                if (afterStart < afterEnd) { Upstream = new Upstream(this, chromosomeSequence.ChromosomeID, Strand, afterStart, afterEnd, null); }
-                if (beforeStart < beforeEnd) { Downstream = new Downstream(this, chromosomeSequence.ChromosomeID, Strand, beforeStart, beforeEnd, null); }
+                if (afterStart < afterEnd) { Upstream = new Upstream(this, chromosomeSequence.ChromosomeID, Source, Strand, afterStart, afterEnd, null); }
+                if (beforeStart < beforeEnd) { Downstream = new Downstream(this, chromosomeSequence.ChromosomeID, Source, Strand, beforeStart, beforeEnd, null); }
             }
 
             return new List<Interval> { Upstream, Downstream };
@@ -1128,7 +1136,7 @@ namespace Proteogenomics
                     previous = x;
                     continue;
                 }
-                Intron intron = new Intron(this, x.ChromosomeID, x.Strand, previous.OneBasedEnd + 1, x.OneBasedStart - 1, null);
+                Intron intron = new Intron(this, x.ChromosomeID, x.Source, x.Strand, previous.OneBasedEnd + 1, x.OneBasedStart - 1, null);
                 if (intron.Length() > 0)
                 {
                     Introns.Add(intron);
@@ -1234,5 +1242,71 @@ namespace Proteogenomics
         }
 
         #endregion Warning Methods
+
+        #region Output GTF Methods
+
+        public List<MetadataListItem<List<string>>> GetFeatures()
+        {
+            var features = new List<MetadataListItem<List<string>>>();
+            var geneMetadata = GetGtfFeatureMetadata();
+            features.Add(geneMetadata);
+            List<Interval> exonsAndCds = Exons.OfType<Interval>().Concat(CodingDomainSequences).OrderBy(t => t.OneBasedStart).ToList(); // exons before cds; exons should come up first after stable sorting
+            Exon currentExon = null;
+            foreach (Interval xc in exonsAndCds)
+            {
+                Exon x = xc as Exon;
+                if (x != null)
+                {
+                    currentExon = x;
+                    features.Add(x.GetGtfFeatureMetadata());
+                }
+                else
+                {
+                    features.Add(CDSFeatureMetadata(xc as CDS, currentExon));
+                }
+            }
+            return features;
+        }
+
+        public override string GetGtfAttributes()
+        {
+            var attributes = GeneModel.SplitAttributes(FeatureMetadata.FreeText);
+            List<Tuple<string, string>> attributeSubsections = new List<Tuple<string, string>>();
+
+            string tIdLabel = "transcript_id";
+            bool hasTranscriptId = attributes.TryGetValue(tIdLabel, out string transcriptId);
+            if (hasTranscriptId) { attributeSubsections.Add(new Tuple<string, string>(tIdLabel, transcriptId)); }
+
+            string tVersionLabel = "transcript_version";
+            bool hasTranscriptVersion = attributes.TryGetValue(tVersionLabel, out string transcriptVersion);
+            if (hasTranscriptVersion) { attributeSubsections.Add(new Tuple<string, string>(tVersionLabel, transcriptVersion)); }
+
+            string tBiotypeLabel = "transcript_biotype";
+            bool hasTranscriptBiotype = attributes.TryGetValue(tBiotypeLabel, out string transcriptBiotype);
+            if (hasTranscriptVersion) { attributeSubsections.Add(new Tuple<string, string>(tBiotypeLabel, transcriptBiotype)); }
+
+            // Cufflinks-related, but not using Cufflinks much because stringtie is better
+            //bool hasNearestRef = attributes.TryGetValue("nearest_ref", out string nearestRef);
+            //bool hasClassCode = attributes.TryGetValue("class_code", out string classCode);
+
+            bool hasSource = FeatureMetadata.SubItems.TryGetValue("source", out List<string> sourceish);
+            bool hasStrand = FeatureMetadata.SubItems.TryGetValue("strand", out List<string> strandish);
+            bool hasFrame = FeatureMetadata.SubItems.TryGetValue("frame", out List<string> framey);
+
+            return Parent.GetGtfAttributes() + " " + String.Join(" ", attributeSubsections.Select(x => x.Item1 + " \"" + x.Item2 + "\";"));
+        }
+
+        private static MetadataListItem<List<string>> CDSFeatureMetadata(CDS cds, Exon exon)
+        {
+            string cdsAttributes = exon.GetGtfAttributes() + "; protein_id \"" + (cds.Parent as Transcript).ProteinID + "\";";
+            var feature = new MetadataListItem<List<string>>(cds.FeatureType, cdsAttributes);
+            feature.SubItems["source"] = new List<string> { cds.Source.ToString() };
+            feature.SubItems["start"] = new List<string> { cds.OneBasedStart.ToString() };
+            feature.SubItems["end"] = new List<string> { cds.OneBasedEnd.ToString() };
+            if (cds.Strand != ".") { feature.SubItems["strand"] = new List<string> { cds.Strand.ToString() }; } // might take in features without strand later on
+            return feature;
+        }
+
+        #endregion Output GTF Methods
     }
 }

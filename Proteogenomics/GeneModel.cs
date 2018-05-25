@@ -81,29 +81,7 @@ namespace Proteogenomics
                     MetadataListItem<List<string>> feature = features[i];
                     long.TryParse(feature.SubItems["start"][0], out long start);
                     long.TryParse(feature.SubItems["end"][0], out long end);
-
-                    Dictionary<string, string> attributes = new Dictionary<string, string>();
-                    foreach (string attrib in feature.FreeText.Split(';'))
-                    {
-                        string key;
-                        string val;
-                        if (feature.FreeText.Contains('=')) // GFF3
-                        {
-                            key = attrib.Split('=')[0].TrimStart();
-                            val = attrib.Split('=')[1].TrimStart();
-                        }
-                        else // GFF1 or GTF
-                        {
-                            key = AttributeKey.Match(attrib.TrimStart()).Groups[1].Value;
-                            val = AttributeValue.Match(attrib.TrimStart()).Groups[1].Value;
-                        }
-
-                        if (!attributes.TryGetValue(key, out string x)) // sometimes there are two tags, so avoid adding twice
-                        {
-                            attributes.Add(key, val);
-                        }
-                    }
-
+                    var attributes = SplitAttributes(feature.FreeText);
                     if (feature.FreeText.Contains('='))
                     {
                         ProcessGff3Feature(feature, start, end, chrom, attributes);
@@ -139,8 +117,11 @@ namespace Proteogenomics
             bool hasTranscriptVersion = attributes.TryGetValue("version", out string transcriptVersion) && hasTranscriptId;
             bool hasExonId = attributes.TryGetValue("exon_id", out string exonId);
             bool hasProteinId = attributes.TryGetValue("protein_id", out string proteinId);
+            bool hasSource = feature.SubItems.TryGetValue("source", out List<string> sourceish); // false if empty ("." in GFF format)
             bool hasStrand = feature.SubItems.TryGetValue("strand", out List<string> strandish); // false if empty ("." in GFF format)
             bool hasFrame = feature.SubItems.TryGetValue("frame", out List<string> framey); // false if empty ("." in GFF format)
+
+            string source = hasSource ? sourceish[0] : "";
             if (!hasStrand) { return; } // strand is a required to do anything in this program
             string strand = strandish[0];
             int frame = 0;
@@ -148,7 +129,7 @@ namespace Proteogenomics
 
             if (hasGeneId && (currentGene == null || hasGeneId && geneId != currentGene.ID))
             {
-                currentGene = new Gene(geneId, chrom, strand, oneBasedStart, oneBasedEnd);
+                currentGene = new Gene(geneId, chrom, source, strand, oneBasedStart, oneBasedEnd, feature);
                 Genes.Add(currentGene);
                 GenomeForest.Add(currentGene);
             }
@@ -160,7 +141,7 @@ namespace Proteogenomics
                     Transcript.SetRegions(currentTranscript);
                     currentTranscript.FrameCorrection();
                 }
-                currentTranscript = new Transcript(transcriptId, transcriptVersion, currentGene, strand, oneBasedStart, oneBasedEnd, null, null);
+                currentTranscript = new Transcript(transcriptId, transcriptVersion, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
                 currentGene.Transcripts.Add(currentTranscript);
                 GenomeForest.Add(currentTranscript);
             }
@@ -169,7 +150,7 @@ namespace Proteogenomics
             {
                 ISequence exon_dna = chrom.Sequence.GetSubSequence(oneBasedStart - 1, oneBasedEnd - oneBasedStart + 1);
                 Exon exon = new Exon(currentTranscript, currentTranscript.IsStrandPlus() ? exon_dna : exon_dna.GetReverseComplementedSequence(),
-                    oneBasedStart, oneBasedEnd, chrom == null ? "" : chrom.ChromosomeID, strand, null);
+                    source, oneBasedStart, oneBasedEnd, chrom == null ? "" : chrom.ChromosomeID, strand, null, feature);
                 if (exon.Length() > 0)
                 {
                     currentTranscript.Exons.Add(exon);
@@ -177,7 +158,7 @@ namespace Proteogenomics
             }
             else if (hasProteinId)
             {
-                CDS cds = new CDS(currentTranscript, chrom.Sequence.ID, strand, oneBasedStart, oneBasedEnd, null, frame);
+                CDS cds = new CDS(currentTranscript, chrom.Sequence.ID, source, strand, oneBasedStart, oneBasedEnd, null, frame);
                 if (cds.Length() > 0)
                 {
                     currentTranscript.CodingDomainSequences.Add(cds);
@@ -211,8 +192,11 @@ namespace Proteogenomics
             bool hasExonNumber = attributes.TryGetValue("exon_number", out string exonNumber);
             bool hasNearestRef = attributes.TryGetValue("nearest_ref", out string nearestRef); // Cufflinks
             bool hasClassCode = attributes.TryGetValue("class_code", out string classCode); // Cufflinks
+            bool hasSource = feature.SubItems.TryGetValue("source", out List<string> sourceish);
             bool hasStrand = feature.SubItems.TryGetValue("strand", out List<string> strandish);
             bool hasFrame = feature.SubItems.TryGetValue("frame", out List<string> framey);
+
+            string source = hasSource ? sourceish[0] : "";
             if (!hasStrand) { return; } // strand is a required to do anything in this program
             string strand = strandish[0];
             int frame = 0;
@@ -223,12 +207,12 @@ namespace Proteogenomics
             {
                 if (currentGene == null || hasGeneId && geneId != currentGene.ID)
                 {
-                    currentGene = new Gene(geneId, chrom, strand, oneBasedStart, oneBasedEnd);
+                    currentGene = new Gene(geneId, chrom, source, strand, oneBasedStart, oneBasedEnd, feature);
                     Genes.Add(currentGene);
                     GenomeForest.Add(currentGene);
                 }
 
-                currentTranscript = new Transcript(transcriptId, transcriptVersion, currentGene, strand, oneBasedStart, oneBasedEnd, null, null);
+                currentTranscript = new Transcript(transcriptId, transcriptVersion, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
                 currentGene.Transcripts.Add(currentTranscript);
                 GenomeForest.Add(currentTranscript);
             }
@@ -237,7 +221,7 @@ namespace Proteogenomics
             {
                 if (currentGene == null || hasGeneId && geneId != currentGene.ID)
                 {
-                    currentGene = new Gene(geneId, chrom, strand, oneBasedStart, oneBasedEnd);
+                    currentGene = new Gene(geneId, chrom, source, strand, oneBasedStart, oneBasedEnd, feature);
                     Genes.Add(currentGene);
                     GenomeForest.Add(currentGene);
                 }
@@ -249,7 +233,7 @@ namespace Proteogenomics
                         Transcript.SetRegions(currentTranscript);
                         currentTranscript.FrameCorrection();
                     }
-                    currentTranscript = new Transcript(transcriptId, transcriptVersion, currentGene, strand, oneBasedStart, oneBasedEnd, null, null);
+                    currentTranscript = new Transcript(transcriptId, transcriptVersion, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
                     currentGene.Transcripts.Add(currentTranscript);
                     GenomeForest.Add(currentTranscript);
                 }
@@ -258,7 +242,7 @@ namespace Proteogenomics
                 {
                     ISequence exon_dna = chrom.Sequence.GetSubSequence(oneBasedStart - 1, oneBasedEnd - oneBasedStart + 1);
                     Exon exon = new Exon(currentTranscript, currentTranscript.IsStrandPlus() ? exon_dna : exon_dna.GetReverseComplementedSequence(),
-                        oneBasedStart, oneBasedEnd, chrom.Sequence.ID, strand, null);
+                        source, oneBasedStart, oneBasedEnd, chrom.Sequence.ID, strand, null, feature);
                     if (exon.Length() > 0)
                     {
                         currentTranscript.Exons.Add(exon);
@@ -266,7 +250,7 @@ namespace Proteogenomics
                 }
                 else if (feature.Key == "CDS")
                 {
-                    CDS cds = new CDS(currentTranscript, chrom.Sequence.ID, strand, oneBasedStart, oneBasedEnd, null, frame);
+                    CDS cds = new CDS(currentTranscript, chrom.Sequence.ID, source, strand, oneBasedStart, oneBasedEnd, null, frame);
                     if (cds.Length() > 0)
                     {
                         currentTranscript.CodingDomainSequences.Add(cds);
@@ -276,6 +260,37 @@ namespace Proteogenomics
                 { // nothing to do
                 }
             }
+        }
+
+        /// <summary>
+        /// Splits attributes from free text, either from GTF or GFF
+        /// </summary>
+        /// <param name="freeText"></param>
+        /// <returns></returns>
+        public static Dictionary<string, string> SplitAttributes(string freeText)
+        {
+            Dictionary<string, string> attributes = new Dictionary<string, string>();
+            foreach (string attrib in freeText.Split(';'))
+            {
+                string key;
+                string val;
+                if (freeText.Contains('=')) // GFF3
+                {
+                    key = attrib.Split('=')[0].TrimStart();
+                    val = attrib.Split('=')[1].TrimStart();
+                }
+                else // GFF1 or GTF
+                {
+                    key = AttributeKey.Match(attrib.TrimStart()).Groups[1].Value;
+                    val = AttributeValue.Match(attrib.TrimStart()).Groups[1].Value;
+                }
+
+                if (!attributes.TryGetValue(key, out string x)) // sometimes there are two tags, so avoid adding twice
+                {
+                    attributes.Add(key, val);
+                }
+            }
+            return attributes;
         }
 
         public static List<ISequence> SimplerParse(string geneModelFile)
@@ -344,6 +359,30 @@ namespace Proteogenomics
         }
 
         /// <summary>
+        /// Print out to a
+        /// </summary>
+        /// <param name="outGffFilePath"></param>
+        public void PrintToGTF(string outGffFilePath)
+        {
+            using (FileStream stream = new FileStream(outGffFilePath, FileMode.Create))
+            {
+                GffFormatter gff = new GffFormatter();
+                foreach (Chromosome chrom in Genome.Chromosomes)
+                {
+                    var features = new List<MetadataListItem<List<string>>>();
+                    chrom.Sequence.Metadata["features"] = features;
+                    GenomeForest.Forest.TryGetValue(chrom.FriendlyName, out var tree);
+                    if (tree == null) { continue; }
+                    List<Gene> genes = tree.Intervals.OfType<Gene>().OrderBy(g => g.OneBasedStart).ToList();
+                    foreach (Gene gene in genes)
+                    {
+                    }
+                    gff.Format(stream, chrom.Sequence);
+                }
+            }
+        }
+
+        /// <summary>
         /// Creates UTRs for transcripts and intergenic regions after reading gene model
         /// </summary>
         public void CreateIntergenicRegions()
@@ -361,7 +400,7 @@ namespace Proteogenomics
                     if (previous != null)
                     {
                         // if there's a previous gene, create the intergenic region
-                        intergenic = new Intergenic(gene.Chromosome, gene.ChromosomeID, gene.Strand, previous.OneBasedEnd + 1, gene.OneBasedStart - 1, null);
+                        intergenic = new Intergenic(gene.Chromosome, gene.ChromosomeID, gene.Source, gene.Strand, previous.OneBasedEnd + 1, gene.OneBasedStart - 1, null);
                     }
 
                     // store previous genes on each strand

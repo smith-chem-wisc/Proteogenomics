@@ -119,7 +119,7 @@ namespace Proteogenomics
         }
 
         public Variant(Interval parent, VariantContext variant, Chromosome chromosome)
-            : base(parent, variant.Chr, "+", variant.Start, variant.End, null)
+            : base(parent, variant.Chr, "", "+", variant.Start, variant.End, null)
         {
             Chromosome = chromosome;
             VariantContext = variant;

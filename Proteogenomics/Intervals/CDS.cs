@@ -5,8 +5,8 @@ namespace Proteogenomics
     public class CDS :
         Interval
     {
-        public CDS(Transcript parent, string chromID, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants, int startFrame)
-            : base(parent, chromID, strand, oneBasedStart, oneBasedEnd, variants)
+        public CDS(Transcript parent, string chromID, string source, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants, int startFrame)
+            : base(parent, chromID, source, strand, oneBasedStart, oneBasedEnd, variants)
         {
             StartFrame = startFrame;
         }
@@ -16,7 +16,15 @@ namespace Proteogenomics
         {
         }
 
+        /// <summary>
+        /// Start frame for this coding domain sequence { 0, 1, 2 } and -1 is undefined, although that isn't implemented in this program
+        /// </summary>
         public int StartFrame { get; private set; }
+
+        /// <summary>
+        /// Feature name used for writing GTF files
+        /// </summary>
+        public override string FeatureType { get; } = "CDS";
 
         /// <summary>
         /// Corrrects coordinates of end of coding sequence based on coding sequence length
@@ -33,12 +41,12 @@ namespace Proteogenomics
             if (IsStrandPlus())
             {
                 long end = OneBasedStart + (StartFrame - 1);
-                utr5 = new UTR5Prime(parent, parent.ChromosomeID, parent.Strand, OneBasedStart, end, null);
+                utr5 = new UTR5Prime(parent, parent.Source, parent.ChromosomeID, parent.Strand, OneBasedStart, end, null);
             }
             else
             {
                 long start = OneBasedEnd - (StartFrame - 1);
-                utr5 = new UTR5Prime(parent, parent.ChromosomeID, parent.Strand, start, OneBasedEnd, null);
+                utr5 = new UTR5Prime(parent, parent.Source, parent.ChromosomeID, parent.Strand, start, OneBasedEnd, null);
             }
 
             // correct start or end coordinates
@@ -66,12 +74,12 @@ namespace Proteogenomics
             if (IsStrandPlus())
             {
                 long start = OneBasedEnd - (endFrame - 1);
-                utr3 = new UTR3Prime(parent, parent.ChromosomeID, parent.Strand, start, OneBasedEnd, null);
+                utr3 = new UTR3Prime(parent, parent.ChromosomeID, parent.Source, parent.Strand, start, OneBasedEnd, null);
             }
             else
             {
                 long end = OneBasedStart + (endFrame - 1);
-                utr3 = new UTR3Prime(parent, parent.ChromosomeID, parent.Strand, OneBasedStart, end, null);
+                utr3 = new UTR3Prime(parent, parent.ChromosomeID, parent.Source, parent.Strand, OneBasedStart, end, null);
             }
 
             // correct start or end coordinates
@@ -84,7 +92,7 @@ namespace Proteogenomics
         public override Interval ApplyVariant(Variant variant)
         {
             Interval i = base.ApplyVariant(variant);
-            return new CDS(i.Parent as Transcript, i.ChromosomeID, i.Strand, i.OneBasedStart, i.OneBasedEnd, i.Variants, this.StartFrame);
+            return new CDS(i.Parent as Transcript, i.ChromosomeID, i.Source, i.Strand, i.OneBasedStart, i.OneBasedEnd, i.Variants, this.StartFrame);
         }
     }
 }

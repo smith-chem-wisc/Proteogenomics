@@ -128,19 +128,5 @@ namespace TestProteogenomics
             a.CreateCDSFromAnnotatedStartCodons(r);
             a.PrintToGTF(Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "sample_pacbio_merged.gtf"));
         }
-
-        [Test]
-        public void BiggerGtf()
-        {
-            Genome g = new Genome(@"E:\source\repos\Spritz\CMD\bin\Debug\Homo_sapiens.GRCh38.dna.primary_assembly.fa");
-            string referenceGff = @"E:\source\repos\Spritz\CMD\bin\Debug\Homo_sapiens.GRCh38.81.gtf";
-            string alternateGff = @"E:\ProjectsActive\Spritz\customGtfCdsAnnotatedTest\MergedStringtieModel-1914802334.filtered.gtf";
-            GeneModel r = new GeneModel(g, referenceGff);
-            var x = r.Genes.Count;
-            int i = 0;
-            GeneModel a = new GeneModel(g, alternateGff);
-            a.CreateCDSFromAnnotatedStartCodons(r);
-            a.PrintToGTF(@"E:\ProjectsActive\Spritz\customGtfCdsAnnotatedTest\MergedStringtieModel-1914802334.filtered.gff2.withcds.gtf");
-        }
     }
 }

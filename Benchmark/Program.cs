@@ -34,8 +34,7 @@ namespace Benchmark
             string alternateGff = @"E:\ProjectsActive\Spritz\customGtfCdsAnnotatedTest\MergedStringtieModel-1914802334.filtered.gtf";
             GeneModel r = new GeneModel(genome, referenceGff);
             GeneModel a = new GeneModel(genome, alternateGff);
-            var x = a.Genes.SelectMany(g => g.Transcripts).FirstOrDefault(t => t.ID == "");
-            int i = 0;
+            var x = a.Genes.SelectMany(g => g.Transcripts).FirstOrDefault(t => t.ID == ""); // should be null
             a.CreateCDSFromAnnotatedStartCodons(r);
             a.PrintToGTF(@"E:\ProjectsActive\Spritz\customGtfCdsAnnotatedTest\MergedStringtieModel-1914802334.filtered.withcds.gtf");
 

@@ -151,7 +151,7 @@ namespace Proteogenomics
             if (hasExonVersion) { attributeSubsections.Add(new Tuple<string, string>(exonVersionLabel, exonVersion)); }
 
             string exonNumberLabel = "exon_number";
-            string exonNumber = (Parent as Transcript).Exons.Count(x => x.OneBasedStart <= x.OneBasedStart).ToString();
+            string exonNumber = (Parent as Transcript).Exons.Count(x => x.OneBasedStart <= OneBasedStart).ToString();
             attributeSubsections.Add(new Tuple<string, string>(exonNumberLabel, exonNumber));
 
             return Parent.GetGtfAttributes() + " " + String.Join(" ", attributeSubsections.Select(x => x.Item1 + " \"" + x.Item2 + "\";"));

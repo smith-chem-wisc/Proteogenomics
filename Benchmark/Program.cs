@@ -15,8 +15,62 @@ namespace Benchmark
     {
         public static void Main(string[] args)
         {
-            PacBioCds();
+            StringtieAndEnsemblFullCDS();
+            //StringtieAndEnsembl202122CDS();
+            //PacBioCds();
             //SameProteins();
+        }
+
+        /// <summary>
+        /// Check that annotations from ensembl make it in from a merged gene model
+        /// </summary>
+        private static void StringtieAndEnsemblFullCDS()
+        {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            Genome genome = new Genome(@"E:\source\repos\Spritz\Test\bin\Debug\TestData\Homo_sapiens.GRCh38.dna.primary_assembly.fa");
+            string referenceGff = @"E:\source\repos\Spritz\Test\bin\Debug\TestData\Homo_sapiens.GRCh38.81.gtf";
+            string alternateGff = @"E:\ProjectsActive\Spritz\customGtfCdsAnnotatedTest\MergedStringtieModel-1914802334.filtered.gtf";
+            GeneModel r = new GeneModel(genome, referenceGff);
+            GeneModel a = new GeneModel(genome, alternateGff);
+            var x = a.Genes.SelectMany(g => g.Transcripts).FirstOrDefault(t => t.ID == "");
+            int i = 0;
+            a.CreateCDSFromAnnotatedStartCodons(r);
+            a.PrintToGTF(@"E:\ProjectsActive\Spritz\customGtfCdsAnnotatedTest\MergedStringtieModel-1914802334.filtered.withcds.gtf");
+
+            stopwatch.Stop();
+            Console.WriteLine("Finished checking that all proteins are the same.");
+            Console.WriteLine("Time elapsed: " + stopwatch.Elapsed.Minutes.ToString() + " minutes and " + stopwatch.Elapsed.Seconds.ToString() + " seconds.");
+            Console.WriteLine("Result: there are " + a.Genes.Sum(g => g.Transcripts.Count) + " transcript isoforms in " + alternateGff);
+            Console.WriteLine("Result: " + a.Genes.Sum(g => g.Transcripts.Count(t => t.IsProteinCoding())) + " of those transcript isoforms are new annotated as protein coding");
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
+        }
+
+        /// <summary>
+        /// Check that annotations from ensembl make it in from a merged gene model
+        /// </summary>
+        private static void StringtieAndEnsembl202122CDS()
+        {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            Genome genome = new Genome(@"E:\source\repos\Spritz\Test\bin\Debug\TestData\202122.karyotypic.fa");
+            string referenceGff = @"E:\source\repos\Spritz\Test\bin\Debug\TestData\202122.gtf";
+            string alternateGff = @"E:\ProjectsActive\Spritz\customGtfCdsAnnotatedTest\MergedStringtieModel-806392539.filtered.gtf";
+            GeneModel r = new GeneModel(genome, referenceGff);
+            GeneModel a = new GeneModel(genome, alternateGff);
+            a.CreateCDSFromAnnotatedStartCodons(r);
+            a.PrintToGTF(@"E:\ProjectsActive\Spritz\customGtfCdsAnnotatedTest\MergedStringtieModel-806392539.filtered.withcds.gtf");
+
+            stopwatch.Stop();
+            Console.WriteLine("Finished checking that all proteins are the same.");
+            Console.WriteLine("Time elapsed: " + stopwatch.Elapsed.Minutes.ToString() + " minutes and " + stopwatch.Elapsed.Seconds.ToString() + " seconds.");
+            Console.WriteLine("Result: there are " + a.Genes.Sum(g => g.Transcripts.Count) + " transcript isoforms in " + alternateGff);
+            Console.WriteLine("Result: " + a.Genes.Sum(g => g.Transcripts.Count(t => t.IsProteinCoding())) + " of those transcript isoforms are new annotated as protein coding");
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
         }
 
         /// <summary>
@@ -106,7 +160,7 @@ namespace Benchmark
 
             stopwatch.Stop();
             Console.WriteLine("Finished checking that all proteins are the same.");
-            Console.WriteLine("Time elapsed: "+ stopwatch.Elapsed.Minutes.ToString() + " minutes and " + stopwatch.Elapsed.Seconds.ToString() + " seconds.");
+            Console.WriteLine("Time elapsed: " + stopwatch.Elapsed.Minutes.ToString() + " minutes and " + stopwatch.Elapsed.Seconds.ToString() + " seconds.");
             Console.WriteLine("Result: all proteins are " + (allAreEqual ? "" : "not ") + "equal ");
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();

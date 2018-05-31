@@ -28,7 +28,7 @@ namespace Proteogenomics
         /// <summary>
         /// Gets anything inside quotes
         /// </summary>
-        private static Regex AttributeValue = new Regex(@"""([\w.]+)""");
+        private static Regex AttributeValue = new Regex(@"""([^""]+)""");
 
         /// <summary>
         /// Used to check if variants were added before applying them
@@ -68,6 +68,10 @@ namespace Proteogenomics
 
         #region Methods -- Read Gene Model File
 
+        /// <summary>
+        /// Reads gene model features into data structures contained within this library
+        /// </summary>
+        /// <param name="geneModelFile"></param>
         public void ReadGeneFeatures(string geneModelFile)
         {
             foreach (ISequence chromFeatures in SimplerParse(geneModelFile))
@@ -279,6 +283,11 @@ namespace Proteogenomics
             return attributes;
         }
 
+        /// <summary>
+        /// Gets chromsomes as ISequence objects, containing feature metadata contained in the gene model
+        /// </summary>
+        /// <param name="geneModelFile"></param>
+        /// <returns></returns>
         public static List<ISequence> SimplerParse(string geneModelFile)
         {
             ForceGffVersionTo2(geneModelFile, out string geneModelWithVersion2MarkedPath);
@@ -286,6 +295,9 @@ namespace Proteogenomics
             return geneFeatures;
         }
 
+        /// <summary>
+        /// Regex for getting the gff version
+        /// </summary>
         private static Regex gffVersion = new Regex(@"(##gff-version\s+)(\d)");
 
         /// <summary>
@@ -335,6 +347,7 @@ namespace Proteogenomics
             referenceGeneModel.GenomeForest.Build(); // so we don't need to lock the IntervalTree if we end up parallelizing this method
             foreach (Gene g in Genes)
             {
+                bool hasSource = g.FeatureMetadata.SubItems.TryGetValue("source", out List<string> sourceish);
                 if (!referenceGeneModel.GenomeForest.Forest.TryGetValue(g.Chromosome.FriendlyName, out IntervalTree tree)) { continue; }
                 foreach (Transcript t in g.Transcripts)
                 {
@@ -504,53 +517,53 @@ namespace Proteogenomics
         }
 
         /// <summary>
-        /// Merges another gene model into this one
+        /// Merges another gene model into this one (untested; using strintie --merge instead)
         /// </summary>
         /// <param name="model"></param>
-        public void Merge(GeneModel model)
-        {
-            // Get the nearby intervals based on the interval forest before changing the forest
-            List<Tuple<Gene, List<Interval>>> nearbyReferenceIntervals = new List<Tuple<Gene, List<Interval>>>();
-            foreach (Gene g in model.Genes)
-            {
-                if (GenomeForest.Forest.TryGetValue(g.Chromosome.FriendlyName, out var tree))
-                {
-                    var nearbyIntervals = tree.Query(g).ToList();
-                    nearbyReferenceIntervals.Add(new Tuple<Gene, List<Interval>>(g, nearbyIntervals));
-                }
-            }
+        //public void Merge(GeneModel model)
+        //{
+        //    // Get the nearby intervals based on the interval forest before changing the forest
+        //    List<Tuple<Gene, List<Interval>>> nearbyReferenceIntervals = new List<Tuple<Gene, List<Interval>>>();
+        //    foreach (Gene g in model.Genes)
+        //    {
+        //        if (GenomeForest.Forest.TryGetValue(g.Chromosome.FriendlyName, out var tree))
+        //        {
+        //            var nearbyIntervals = tree.Query(g).ToList();
+        //            nearbyReferenceIntervals.Add(new Tuple<Gene, List<Interval>>(g, nearbyIntervals));
+        //        }
+        //    }
 
-            // Iterate over the possible new genes
-            foreach (var geneAndNearby in nearbyReferenceIntervals)
-            {
-                Gene newGene = geneAndNearby.Item1;
-                List<Gene> nearbyGenes = geneAndNearby.Item2.OfType<Gene>().ToList();
-                List<Transcript> nearbyTranscripts = geneAndNearby.Item2.OfType<Transcript>().ToList();
+        //    // Iterate over the possible new genes
+        //    foreach (var geneAndNearby in nearbyReferenceIntervals)
+        //    {
+        //        Gene newGene = geneAndNearby.Item1;
+        //        List<Gene> nearbyGenes = geneAndNearby.Item2.OfType<Gene>().ToList();
+        //        List<Transcript> nearbyTranscripts = geneAndNearby.Item2.OfType<Transcript>().ToList();
 
-                // If there are no nearby genes, add the gene
-                if (nearbyGenes.Count == 0)
-                {
-                    Genes.Add(newGene);
-                    GenomeForest.Add(newGene);
-                    foreach (var t in newGene.Transcripts)
-                    {
-                        GenomeForest.Add(t);
-                    }
-                    continue;
-                }
+        //        // If there are no nearby genes, add the gene
+        //        if (nearbyGenes.Count == 0)
+        //        {
+        //            Genes.Add(newGene);
+        //            GenomeForest.Add(newGene);
+        //            foreach (var t in newGene.Transcripts)
+        //            {
+        //                GenomeForest.Add(t);
+        //            }
+        //            continue;
+        //        }
 
-                // Otherwise, check if the transcript is already in this reference (same # exons and mRNA sequence)
-                // Then, find the most similar gene, i.e. having the least overlap with this possible new gene
-                foreach (Transcript t in newGene.Transcripts)
-                {
-                    bool sameAsReference = nearbyTranscripts.Any(refT => refT.Exons.Count == t.Exons.Count && refT.SplicedRNA().ConvertToString() == t.SplicedRNA().ConvertToString());
-                    if (sameAsReference) { continue; }
-                    Gene mostSimilar = nearbyGenes.OrderBy(g => g.Minus(newGene).Sum(outside => outside.Length())).First();
-                    mostSimilar.Transcripts.Add(t);
-                    GenomeForest.Add(t);
-                }
-            }
-        }
+        //        // Otherwise, check if the transcript is already in this reference (same # exons and mRNA sequence)
+        //        // Then, find the most similar gene, i.e. having the least overlap with this possible new gene
+        //        foreach (Transcript t in newGene.Transcripts)
+        //        {
+        //            bool sameAsReference = nearbyTranscripts.Any(refT => refT.Exons.Count == t.Exons.Count && refT.SplicedRNA().ConvertToString() == t.SplicedRNA().ConvertToString());
+        //            if (sameAsReference) { continue; }
+        //            Gene mostSimilar = nearbyGenes.OrderBy(g => g.Minus(newGene).Sum(outside => outside.Length())).First();
+        //            mostSimilar.Transcripts.Add(t);
+        //            GenomeForest.Add(t);
+        //        }
+        //    }
+        //}
 
         #endregion Methods -- Applying Variants and Translation
     }

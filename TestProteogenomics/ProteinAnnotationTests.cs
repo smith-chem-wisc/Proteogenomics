@@ -9,7 +9,7 @@ using UsefulProteomicsDatabases;
 namespace TestProteogenomics
 {
     [TestFixture]
-    public class TestSequenceSimilarityMethods
+    public class ProteinAnnotationTests
     {
         [Test]
         public void TestTransferExactSequenceMatchMods()

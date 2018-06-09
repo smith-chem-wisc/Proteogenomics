@@ -107,6 +107,7 @@
     <Compile Include="GeneModelTests.cs" />
     <Compile Include="GenomeTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProteinAnnotationTests.cs" />
     <Compile Include="ProteinTranslationTests.cs" />
     <Compile Include="VariantAnnotationTests.cs" />
     <Compile Include="VariantTests.cs" />

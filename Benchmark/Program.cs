@@ -133,7 +133,7 @@ namespace Benchmark
                 }
             }
 
-            ProteinAnnotation.GetImportantProteinAccessions(proteinFasta, out Dictionary<string, string> proteinAccessionSequence, out HashSet<string> bad, out Dictionary<string, string> se);
+            GeneModel.GetImportantProteinAccessions(proteinFasta, out Dictionary<string, string> proteinAccessionSequence, out HashSet<string> bad, out Dictionary<string, string> se);
 
             Genome genome = new Genome(genomeFasta);
             GeneModel geneModel = new GeneModel(genome, geneModelFile);

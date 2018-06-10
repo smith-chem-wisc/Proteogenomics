@@ -3,12 +3,12 @@ using Bio.Extensions;
 using Bio.IO.Gff;
 using Bio.VCF;
 using Proteomics;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using UsefulProteomicsDatabases;
 
 namespace Proteogenomics
 {
@@ -517,53 +517,26 @@ namespace Proteogenomics
         }
 
         /// <summary>
-        /// Merges another gene model into this one (untested; using strintie --merge instead)
+        /// Ensembl coding domain sequences (CDS) sometimes don't have start or stop codons annotated.
+        /// The only way I can figure out how to tell which they are is to read in the protein FASTA and find the ones starting with X's or containing a stop codon '*'
         /// </summary>
-        /// <param name="model"></param>
-        //public void Merge(GeneModel model)
-        //{
-        //    // Get the nearby intervals based on the interval forest before changing the forest
-        //    List<Tuple<Gene, List<Interval>>> nearbyReferenceIntervals = new List<Tuple<Gene, List<Interval>>>();
-        //    foreach (Gene g in model.Genes)
-        //    {
-        //        if (GenomeForest.Forest.TryGetValue(g.Chromosome.FriendlyName, out var tree))
-        //        {
-        //            var nearbyIntervals = tree.Query(g).ToList();
-        //            nearbyReferenceIntervals.Add(new Tuple<Gene, List<Interval>>(g, nearbyIntervals));
-        //        }
-        //    }
-
-        //    // Iterate over the possible new genes
-        //    foreach (var geneAndNearby in nearbyReferenceIntervals)
-        //    {
-        //        Gene newGene = geneAndNearby.Item1;
-        //        List<Gene> nearbyGenes = geneAndNearby.Item2.OfType<Gene>().ToList();
-        //        List<Transcript> nearbyTranscripts = geneAndNearby.Item2.OfType<Transcript>().ToList();
-
-        //        // If there are no nearby genes, add the gene
-        //        if (nearbyGenes.Count == 0)
-        //        {
-        //            Genes.Add(newGene);
-        //            GenomeForest.Add(newGene);
-        //            foreach (var t in newGene.Transcripts)
-        //            {
-        //                GenomeForest.Add(t);
-        //            }
-        //            continue;
-        //        }
-
-        //        // Otherwise, check if the transcript is already in this reference (same # exons and mRNA sequence)
-        //        // Then, find the most similar gene, i.e. having the least overlap with this possible new gene
-        //        foreach (Transcript t in newGene.Transcripts)
-        //        {
-        //            bool sameAsReference = nearbyTranscripts.Any(refT => refT.Exons.Count == t.Exons.Count && refT.SplicedRNA().ConvertToString() == t.SplicedRNA().ConvertToString());
-        //            if (sameAsReference) { continue; }
-        //            Gene mostSimilar = nearbyGenes.OrderBy(g => g.Minus(newGene).Sum(outside => outside.Length())).First();
-        //            mostSimilar.Transcripts.Add(t);
-        //            GenomeForest.Add(t);
-        //        }
-        //    }
-        //}
+        /// <param name="spritzDirectory"></param>
+        /// <param name="proteinFastaPath"></param>
+        /// <returns></returns>
+        public static void GetImportantProteinAccessions(string proteinFastaPath, out Dictionary<string, string> proteinAccessionSequence, out HashSet<string> badProteinAccessions,
+            out Dictionary<string, string> selenocysteineProteinAccessions)
+        {
+            Regex transcriptAccession = new Regex(@"(transcript:)([A-Za-z0-9_.]+)"); // need to include transcript accessions for when a GTF file is used and transcript IDs become the protein IDs
+            List<Protein> proteins = ProteinDbLoader.LoadProteinFasta(proteinFastaPath, true, DecoyType.None, false,
+                ProteinDbLoader.EnsemblAccessionRegex, ProteinDbLoader.EnsemblFullNameRegex, ProteinDbLoader.EnsemblFullNameRegex, ProteinDbLoader.EnsemblGeneNameRegex, null, out List<string> errors);
+            proteinAccessionSequence = proteins.Select(p => new KeyValuePair<string, string>(p.Accession, p.BaseSequence))
+                .Concat(proteins.Select(p => new KeyValuePair<string, string>(transcriptAccession.Match(p.FullName).Groups[2].Value, p.BaseSequence)))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            HashSet<string> badOnes = new HashSet<string>(proteins.Where(p => p.BaseSequence.Contains('X') || p.BaseSequence.Contains('*'))
+                .SelectMany(p => new string[] { p.Accession, transcriptAccession.Match(p.FullName).Groups[2].Value }));
+            badProteinAccessions = badOnes;
+            selenocysteineProteinAccessions = proteins.Where(p => !badOnes.Contains(p.Accession) && p.BaseSequence.Contains('U')).ToDictionary(p => p.Accession, p => p.BaseSequence);
+        }
 
         #endregion Methods -- Applying Variants and Translation
     }

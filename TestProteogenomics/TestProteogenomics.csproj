@@ -107,7 +107,6 @@
     <Compile Include="GeneModelTests.cs" />
     <Compile Include="GenomeTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ProteinAnnotationTests.cs" />
     <Compile Include="ProteinTranslationTests.cs" />
     <Compile Include="VariantAnnotationTests.cs" />
     <Compile Include="VariantTests.cs" />
@@ -187,9 +186,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="ProblematicChr19\chr19problematic.vcf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="TestData\xml2.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="TestVcfs\chr_1_one_heterozygous_missense.vcf">

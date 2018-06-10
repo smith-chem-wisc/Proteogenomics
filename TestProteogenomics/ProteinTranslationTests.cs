@@ -70,7 +70,7 @@ namespace TestProteogenomics
         {
             Genome genome = new Genome(Path.Combine(TestContext.CurrentContext.TestDirectory, "Homo_sapiens.GRCh38.dna.chromosome.5.fa"));
             GeneModel geneModel = new GeneModel(genome, Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData", "chr5_selenocysteineContaining.gff3"));
-            ProteinAnnotation.GetImportantProteinAccessions(Path.Combine(TestContext.CurrentContext.TestDirectory, "Homo_sapiens.GRCh38.pep.all.fa"),
+            GeneModel.GetImportantProteinAccessions(Path.Combine(TestContext.CurrentContext.TestDirectory, "Homo_sapiens.GRCh38.pep.all.fa"),
                 out Dictionary<string, string> p, out HashSet<string> bad, out Dictionary<string, string> se);
             List<Protein> proteins = geneModel.Translate(true, bad, se).ToList();
             Assert.AreEqual("MWRSLGLALALCLLPSGGTESQDQSSLCKQPPAWSIRDQDPMLNSNGSVTVVALLQASUYLCILQASKLEDLRVKLKKEGYSNISYIVVNHQGISSRLKYTHLKNKVSEHIPVYQQEENQTDVWTLLNGSKDDFLIYDRCGRLVYHLGLPFSFLTFPYVEEAIKIAYCEKKCGNCSLTTLKDEDFCKRVSLATVDKTVETPSPHYHHEHHHNHGHQHLGSSELSENQQPGAPNAPTHPAPPGLHHHHKHKGQHRQGHPENRDMPASEDLQDLQKKLCRKRCINQLLCKLPTDSELAPRSUCCHCRHLIFEKTGSAITUQCKENLPSLCSUQGLRAEENITESCQURLPPAAUQISQQLIPTEASASURUKNQAKKUEUPSN",

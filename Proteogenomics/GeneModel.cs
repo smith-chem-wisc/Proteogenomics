@@ -197,6 +197,26 @@ namespace Proteogenomics
             int frame = 0;
             if (hasFrame) { int.TryParse(framey[0], out frame); }
 
+            // Trim prefixes from the IDs
+            string genePrefix = "gene:";
+            string transcriptPrefix = "transcript:";
+            if (hasGeneId && geneId.StartsWith(genePrefix))
+            {
+                string newGeneId = geneId.Substring(genePrefix.Length);
+                feature.FreeText.Replace(geneId, newGeneId);
+                geneId = newGeneId;
+            }
+            if (hasTranscriptId && transcriptId.StartsWith(transcriptPrefix))
+            {
+                string newTranscriptId = transcriptId.Substring(transcriptPrefix.Length);
+                feature.FreeText.Replace(transcriptId, newTranscriptId);
+                transcriptId = newTranscriptId;
+            }
+            if (hasProteinId && proteinId.StartsWith(transcriptPrefix))
+            {
+                proteinId = proteinId.Substring(transcriptPrefix.Length); // transcript id is used for protein id sometimes
+            }
+
             // Catch the transcript features before they go by if available, i.e. if the file doesn't just have exons
             if (feature.Key == "transcript" && (currentTranscript == null || hasTranscriptId && transcriptId != currentTranscript.ID))
             {

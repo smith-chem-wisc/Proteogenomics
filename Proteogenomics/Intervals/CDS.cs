@@ -5,8 +5,8 @@ namespace Proteogenomics
     public class CDS :
         Interval
     {
-        public CDS(Transcript parent, string chromID, string source, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants, int startFrame)
-            : base(parent, chromID, source, strand, oneBasedStart, oneBasedEnd, variants)
+        public CDS(Transcript parent, string chromID, string source, string strand, long oneBasedStart, long oneBasedEnd, int startFrame)
+            : base(parent, chromID, source, strand, oneBasedStart, oneBasedEnd)
         {
             StartFrame = startFrame;
         }
@@ -41,12 +41,12 @@ namespace Proteogenomics
             if (IsStrandPlus())
             {
                 long end = OneBasedStart + (StartFrame - 1);
-                utr5 = new UTR5Prime(parent, parent.Source, parent.ChromosomeID, parent.Strand, OneBasedStart, end, null);
+                utr5 = new UTR5Prime(parent, parent.Source, parent.ChromosomeID, parent.Strand, OneBasedStart, end);
             }
             else
             {
                 long start = OneBasedEnd - (StartFrame - 1);
-                utr5 = new UTR5Prime(parent, parent.Source, parent.ChromosomeID, parent.Strand, start, OneBasedEnd, null);
+                utr5 = new UTR5Prime(parent, parent.Source, parent.ChromosomeID, parent.Strand, start, OneBasedEnd);
             }
 
             // correct start or end coordinates
@@ -74,12 +74,12 @@ namespace Proteogenomics
             if (IsStrandPlus())
             {
                 long start = OneBasedEnd - (endFrame - 1);
-                utr3 = new UTR3Prime(parent, parent.ChromosomeID, parent.Source, parent.Strand, start, OneBasedEnd, null);
+                utr3 = new UTR3Prime(parent, parent.ChromosomeID, parent.Source, parent.Strand, start, OneBasedEnd);
             }
             else
             {
                 long end = OneBasedStart + (endFrame - 1);
-                utr3 = new UTR3Prime(parent, parent.ChromosomeID, parent.Source, parent.Strand, OneBasedStart, end, null);
+                utr3 = new UTR3Prime(parent, parent.ChromosomeID, parent.Source, parent.Strand, OneBasedStart, end);
             }
 
             // correct start or end coordinates
@@ -87,12 +87,6 @@ namespace Proteogenomics
             else { OneBasedStart += endFrame; }
 
             return utr3;
-        }
-
-        public override Interval ApplyVariant(Variant variant)
-        {
-            Interval i = base.ApplyVariant(variant);
-            return new CDS(i.Parent as Transcript, i.ChromosomeID, i.Source, i.Strand, i.OneBasedStart, i.OneBasedEnd, i.Variants, this.StartFrame);
         }
     }
 }

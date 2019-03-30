@@ -14,7 +14,7 @@ namespace Proteogenomics
         /// <returns></returns>
         public static bool TryTranslateCodon(bool mitochondrial, string codon, out byte aminoAcid)
         {
-            if (codon.Length != CodonChange.CODON_SIZE)
+            if (codon.Length != GeneModel.CODON_SIZE)
             {
                 throw new ArgumentException("Codon size not supported: " + codon);
             }

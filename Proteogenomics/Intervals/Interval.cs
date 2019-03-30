@@ -15,7 +15,7 @@ namespace Proteogenomics
         /// <param name="strand"></param>
         /// <param name="oneBasedStart"></param>
         /// <param name="oneBasedEnd"></param>
-        public Interval(Interval parent, string chromosomeID, string source, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants)
+        public Interval(Interval parent, string chromosomeID, string source, string strand, long oneBasedStart, long oneBasedEnd)
         {
             Parent = parent;
             ChromosomeID = chromosomeID;
@@ -23,7 +23,6 @@ namespace Proteogenomics
             Strand = strand;
             OneBasedStart = oneBasedStart;
             OneBasedEnd = oneBasedEnd;
-            Variants = variants ?? new HashSet<Variant>();
         }
 
         /// <summary>
@@ -31,7 +30,7 @@ namespace Proteogenomics
         /// </summary>
         /// <param name="interval"></param>
         public Interval(Interval interval) :
-            this(interval.Parent, interval.ChromosomeID, interval.Source, interval.Strand, interval.OneBasedStart, interval.OneBasedEnd, interval.Variants)
+            this(interval.Parent, interval.ChromosomeID, interval.Source, interval.Strand, interval.OneBasedStart, interval.OneBasedEnd)
         {
         }
 
@@ -70,16 +69,6 @@ namespace Proteogenomics
         public Interval Parent { get; set; }
 
         /// <summary>
-        /// Type of interval
-        /// </summary>
-        public EffectType IntervalType { get; set; } = EffectType.NONE;
-
-        /// <summary>
-        /// Variants contained in this interval
-        /// </summary>
-        public HashSet<Variant> Variants { get; set; } = new HashSet<Variant>();
-
-        /// <summary>
         /// Feature name used for writing GTF files
         /// </summary>
         public virtual string FeatureType { get; } = "interval";
@@ -103,195 +92,6 @@ namespace Proteogenomics
             Array.Sort(points);
             int middle = points.Length / 2;
             return points[middle];
-        }
-
-        #region Variant Application Methods
-
-        /// <summary>
-        /// Do something with a variant within this interval
-        /// </summary>
-        /// <param name="variant"></param>
-        public virtual Interval ApplyVariant(Variant variant)
-        {
-            Variants.Add(variant);
-
-            Interval newInterval = null;
-            switch (variant.VarType)
-            {
-                case Variant.VariantType.SNV:
-                case Variant.VariantType.MNV:
-                    // Variant does not change length. No effect when applying (all coordinates remain the same)
-                    newInterval = this;
-                    break;
-
-                case Variant.VariantType.INS:
-                    newInterval = ApplyIns(variant);
-                    break;
-
-                case Variant.VariantType.DEL:
-                    newInterval = ApplyDel(variant);
-                    break;
-
-                case Variant.VariantType.DUP:
-                    newInterval = ApplyDup(variant);
-                    break;
-
-                default:
-                    // We are not ready for mixed changes
-                    throw new ArgumentException("Variant type not supported: " + variant.VarType.ToString() + "\n\t" + variant);
-            }
-
-            // Always return a copy of the marker (if the variant is applied)
-            if (newInterval == this)
-            {
-                return new Interval(this);
-            }
-            return newInterval;
-        }
-
-        /// <summary>
-        /// Apply a Variant to a marker. Variant is a deletion
-        /// </summary>
-        /// <param name="variant"></param>
-        /// <returns></returns>
-        protected Interval ApplyDel(Variant variant)
-        {
-            Interval m = new Interval(this);
-
-            if (variant.OneBasedEnd < m.OneBasedStart)
-            {
-                // Deletion before start: Adjust coordinates
-                long lenChange = variant.LengthChange();
-                m.OneBasedStart += lenChange;
-                m.OneBasedEnd += lenChange;
-            }
-            else if (variant.Includes(m))
-            {
-                // Deletion completely includes this marker => The whole marker deleted
-                return null;
-            }
-            else if (m.Includes(variant))
-            {
-                // This marker completely includes the deletion, but deletion does not include
-                // marker. Marker is shortened (i.e. only 'end' coordinate needs to be updated)
-                m.OneBasedEnd += variant.LengthChange();
-            }
-            else
-            {
-                // Variant is partially included in this marker.
-                // This is treated as three different type of deletions:
-                //		1- One after the marker
-                //		2- One inside the marker
-                //		3- One before the marker
-                // Note that type 1 and 3 cannot exists at the same time, otherwise the
-                // deletion would fully include the marker (previous case)
-
-                // Part 1: Deletion after the marker
-                if (m.OneBasedEnd < variant.OneBasedEnd)
-                {
-                    // Actually this does not affect the coordinates, so we don't care about this part
-                }
-
-                // Part 2: Deletion matching the marker (intersection)
-                long istart = Math.Max(variant.OneBasedStart, m.OneBasedStart);
-                long iend = Math.Min(variant.OneBasedEnd, m.OneBasedEnd);
-                if (iend < istart) { throw new ArgumentOutOfRangeException("This should never happen!"); }// Sanity check
-                m.OneBasedEnd -= (iend - istart + 1); // Update end coordinate
-
-                // Part 3: Deletion before the marker
-                if (variant.OneBasedStart < m.OneBasedEnd)
-                {
-                    // Update coordinates shifting the marker to the left
-                    long delta = m.OneBasedStart - variant.OneBasedStart;
-                    m.OneBasedStart -= delta;
-                    m.OneBasedEnd -= delta;
-                }
-            }
-
-            return m;
-        }
-
-        /// <summary>
-        /// Apply a Variant to a marker. Variant is a duplication
-        /// </summary>
-        /// <param name="variant"></param>
-        /// <returns></returns>
-        protected Interval ApplyDup(Variant variant)
-        {
-            Interval m = new Interval(this);
-
-            if (variant.OneBasedEnd < m.OneBasedStart)
-            {
-                // Duplication before marker start? => Adjust both coordinates
-                long lenChange = variant.LengthChange();
-                m.OneBasedStart += lenChange;
-                m.OneBasedEnd += lenChange;
-            }
-            else if (variant.Includes(m))
-            {
-                // Duplication includes whole marker? => Adjust both coordinates
-                long lenChange = variant.LengthChange();
-                m.OneBasedStart += lenChange;
-                m.OneBasedEnd += lenChange;
-            }
-            else if (m.Includes(variant))
-            {
-                // Duplication included in marker? => Adjust end coordinate
-                m.OneBasedEnd += variant.LengthChange();
-            }
-            else if (variant.Intersects(m))
-            {
-                // Duplication includes part of marker? => Adjust end
-                m.OneBasedEnd += variant.IntersectSize(m);
-            }
-            else
-            {
-                // Duplication after end, no effect on marker coordinates
-            }
-
-            return m;
-        }
-
-        /// <summary>
-        /// Apply a Variant to a marker. Variant is an insertion
-        /// </summary>
-        /// <param name="variant"></param>
-        /// <returns></returns>
-        protected Interval ApplyIns(Variant variant)
-        {
-            Interval m = new Interval(this);
-
-            if (variant.OneBasedStart < m.OneBasedStart)
-            {
-                // Insertion point before marker start? => Adjust both coordinates
-                long lenChange = variant.LengthChange();
-                m.OneBasedStart += lenChange;
-                m.OneBasedEnd += lenChange;
-            }
-            else if (variant.OneBasedStart <= m.OneBasedEnd)
-            {
-                // Insertion point after start, but before end? => Adjust end coordinate
-                m.OneBasedEnd += variant.LengthChange();
-            }
-            else
-            {
-                // Insertion point after end, no effect on marker coordinates
-            }
-
-            return m;
-        }
-
-        /// <summary>
-        /// Calculate the effect of this variant
-        /// </summary>
-        /// <param name="variant"></param>
-        /// <param name="variantEffects"></param>
-        /// <returns></returns>
-        public virtual bool CreateVariantEffect(Variant variant, VariantEffects variantEffects)
-        {
-            if (!Intersects(variant)) { return false; }
-            variantEffects.AddEffect(variant, this, IntervalType, "");
-            return true;
         }
 
         /// <summary>
@@ -343,8 +143,6 @@ namespace Proteogenomics
                 len - 1 + (OneBasedStart - latest);
         }
 
-        #endregion Variant Application Methods
-
         public List<Interval> Minus(Interval interval)
         {
             List<Interval> intervals = new List<Interval>();
@@ -357,18 +155,18 @@ namespace Proteogenomics
                 else if (interval.OneBasedStart <= OneBasedStart && interval.OneBasedEnd < OneBasedEnd)
                 {
                     // 'interval' overlaps left part of 'this' => Include right part of 'this'
-                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, interval.OneBasedEnd + 1, OneBasedEnd, Variants));
+                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, interval.OneBasedEnd + 1, OneBasedEnd));
                 }
                 else if (OneBasedStart < interval.OneBasedStart && OneBasedEnd <= interval.OneBasedEnd)
                 {
                     // 'interval' overlaps right part of 'this' => Include left part of 'this'
-                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, OneBasedStart, interval.OneBasedStart - 1, Variants));
+                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, OneBasedStart, interval.OneBasedStart - 1));
                 }
                 else if (OneBasedStart < interval.OneBasedStart && interval.OneBasedEnd < OneBasedEnd)
                 {
                     // 'interval' overlaps middle of 'this' => Include left and right part of 'this'
-                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, OneBasedStart, interval.OneBasedStart - 1, Variants));
-                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, interval.OneBasedEnd + 1, OneBasedEnd, Variants));
+                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, OneBasedStart, interval.OneBasedStart - 1));
+                    intervals.Add(new Interval(Parent, ChromosomeID, Source, Strand, interval.OneBasedEnd + 1, OneBasedEnd));
                 }
                 else
                 {

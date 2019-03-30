@@ -1,7 +1,6 @@
 ﻿using Bio;
 using Bio.Extensions;
 using Bio.IO.Gff;
-using Bio.VCF;
 using Proteomics;
 using System.Collections.Generic;
 using System.IO;
@@ -17,6 +16,7 @@ namespace Proteogenomics
     /// </summary>
     public class GeneModel
     {
+        public const int CODON_SIZE = 3;
         private Gene currentGene = null;
         private Transcript currentTranscript = null;
 
@@ -29,12 +29,7 @@ namespace Proteogenomics
         /// Gets anything inside quotes
         /// </summary>
         private static Regex AttributeValue = new Regex(@"""([^""]+)""");
-
-        /// <summary>
-        /// Used to check if variants were added before applying them
-        /// </summary>
-        private static List<Variant> PreviouslyAddedVariants;
-
+        
         /// <summary>
         /// Constructs this GeneModel object from a Genome object and a corresponding GTF or GFF3 gene model file.
         /// </summary>
@@ -144,7 +139,7 @@ namespace Proteogenomics
                     Transcript.SetRegions(currentTranscript);
                     currentTranscript.FrameCorrection();
                 }
-                currentTranscript = new Transcript(transcriptId, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
+                currentTranscript = new Transcript(transcriptId, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, feature);
                 currentGene.Transcripts.Add(currentTranscript);
                 GenomeForest.Add(currentTranscript);
             }
@@ -153,7 +148,7 @@ namespace Proteogenomics
             {
                 ISequence exon_dna = chrom.Sequence.GetSubSequence(oneBasedStart - 1, oneBasedEnd - oneBasedStart + 1);
                 Exon exon = new Exon(currentTranscript, currentTranscript.IsStrandPlus() ? exon_dna : exon_dna.GetReverseComplementedSequence(),
-                    source, oneBasedStart, oneBasedEnd, chrom == null ? "" : chrom.ChromosomeID, strand, null, feature);
+                    source, oneBasedStart, oneBasedEnd, chrom == null ? "" : chrom.ChromosomeID, strand, feature);
                 if (exon.Length() > 0)
                 {
                     currentTranscript.Exons.Add(exon);
@@ -161,7 +156,7 @@ namespace Proteogenomics
             }
             else if (hasProteinId)
             {
-                CDS cds = new CDS(currentTranscript, chrom.Sequence.ID, source, strand, oneBasedStart, oneBasedEnd, null, frame);
+                CDS cds = new CDS(currentTranscript, chrom.Sequence.ID, source, strand, oneBasedStart, oneBasedEnd, frame);
                 if (cds.Length() > 0)
                 {
                     currentTranscript.CodingDomainSequences.Add(cds);
@@ -227,7 +222,7 @@ namespace Proteogenomics
                     GenomeForest.Add(currentGene);
                 }
 
-                currentTranscript = new Transcript(transcriptId, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
+                currentTranscript = new Transcript(transcriptId, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, feature);
                 currentGene.Transcripts.Add(currentTranscript);
                 GenomeForest.Add(currentTranscript);
             }
@@ -248,7 +243,7 @@ namespace Proteogenomics
                         Transcript.SetRegions(currentTranscript);
                         currentTranscript.FrameCorrection();
                     }
-                    currentTranscript = new Transcript(transcriptId, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, null, feature);
+                    currentTranscript = new Transcript(transcriptId, currentGene, source, strand, oneBasedStart, oneBasedEnd, null, feature);
                     currentGene.Transcripts.Add(currentTranscript);
                     GenomeForest.Add(currentTranscript);
                 }
@@ -257,12 +252,12 @@ namespace Proteogenomics
                 {
                     ISequence exon_dna = chrom.Sequence.GetSubSequence(oneBasedStart - 1, oneBasedEnd - oneBasedStart + 1);
                     Exon exon = new Exon(currentTranscript, currentTranscript.IsStrandPlus() ? exon_dna : exon_dna.GetReverseComplementedSequence(),
-                        source, oneBasedStart, oneBasedEnd, chrom.Sequence.ID, strand, null, feature);
+                        source, oneBasedStart, oneBasedEnd, chrom.Sequence.ID, strand, feature);
                     if (exon.Length() > 0) { currentTranscript.Exons.Add(exon); }
                 }
                 else if (feature.Key == "CDS")
                 {
-                    CDS cds = new CDS(currentTranscript, chrom.Sequence.ID, source, strand, oneBasedStart, oneBasedEnd, null, frame);
+                    CDS cds = new CDS(currentTranscript, chrom.Sequence.ID, source, strand, oneBasedStart, oneBasedEnd, frame);
                     if (hasProteinId) { currentTranscript.ProteinID = proteinId; }
                     if (cds.Length() > 0) { currentTranscript.CodingDomainSequences.Add(cds); }
                 }
@@ -424,7 +419,7 @@ namespace Proteogenomics
                     if (previous != null)
                     {
                         // if there's a previous gene, create the intergenic region
-                        intergenic = new Intergenic(gene.Chromosome, gene.ChromosomeID, gene.Source, gene.Strand, previous.OneBasedEnd + 1, gene.OneBasedStart - 1, null);
+                        intergenic = new Intergenic(gene.Chromosome, gene.ChromosomeID, gene.Source, gene.Strand, previous.OneBasedEnd + 1, gene.OneBasedStart - 1);
                     }
 
                     // store previous genes on each strand
@@ -444,91 +439,6 @@ namespace Proteogenomics
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// Add variants to relevant genomic regions and annotate them if on transcripts
-        /// </summary>
-        /// <param name="variants"></param>
-        public void AddVariantAnnotations(List<Variant> variants)
-        {
-            Parallel.ForEach(variants.OrderByDescending(v => v.OneBasedStart).ToList(), v =>
-            {
-                if (GenomeForest.Forest.TryGetValue(Chromosome.GetFriendlyChromosomeName(v.ChromosomeID), out var intervalTree))
-                {
-                    foreach (Interval i in intervalTree.Stab(v.OneBasedStart))
-                    {
-                        lock (i)
-                        {
-                            i.Variants.Add(v);
-                            Transcript t = i as Transcript;
-                            if (t != null)
-                            {
-                                t.AnnotateWithVariant(v);
-                            }
-                        }
-                    }
-                }
-            });
-            PreviouslyAddedVariants = variants;
-        }
-
-        /// <summary>
-        /// Apply a list of variants to intervals within this gene model
-        /// </summary>
-        /// <param name="variants"></param>
-        /// <returns></returns>
-        public List<Transcript> ApplyVariants(List<Variant> variants)
-        {
-            // Must add variants before applying them to this gene model
-            if (PreviouslyAddedVariants != variants) { AddVariantAnnotations(variants); }
-            return ApplyVariants(variants, Genes.SelectMany(g => g.Transcripts).ToList());
-        }
-
-        /// <summary>
-        /// Apply variants to transcripts
-        /// </summary>
-        /// <param name="variants"></param>
-        public static List<Transcript> ApplyVariants(List<Variant> variants, List<Transcript> transcripts)
-        {
-            return transcripts.SelectMany(t => ApplyVariantsCombinitorially(t)).ToList();
-        }
-
-        /// <summary>
-        /// Apply variants to a transcript
-        /// </summary>
-        /// <param name="t"></param>
-        /// <returns></returns>
-        public static List<Transcript> ApplyVariantsCombinitorially(Transcript t)
-        {
-            // Clear out annotations from non-combinitoric add/annotate method
-            t.VariantAnnotations.Clear();
-            t.ProteinSequenceVariations.Clear();
-
-            List<Transcript> newTranscripts = new List<Transcript> { new Transcript(t) };
-            int heterozygousNonsynonymousCount = 0;
-            List<Variant> transcriptVariants = t.Variants.OrderByDescending(v => v.OneBasedStart).ToList(); // reversed, so that the coordinates of each successive variant is not changed
-            foreach (Variant v in transcriptVariants)
-            {
-                List<Transcript> newOnes = new List<Transcript>();
-                foreach (var nt in newTranscripts)
-                {
-                    var newerOnes = nt.ApplyVariantCombinitorics(v, out var effects); // expands only when there is a heterozygous nonsynonymous variation
-                    bool heterozygousNonsynonymous = v.GenotypeType == GenotypeType.HETEROZYGOUS && effects.Effects.Any(eff => eff.IsNonsynonymous());
-                    if (heterozygousNonsynonymous)
-                    {
-                        heterozygousNonsynonymousCount++;
-                    }
-                    if (heterozygousNonsynonymousCount > 5 && heterozygousNonsynonymous)
-                    {
-                        Transcript.combinatoricFailures.Add("Heterozygous nonsynonymous variant: transcript:" + v.ToString() + " wasn't included in transcript: " + t.ID + " or protein: " + t.ProteinID);
-                        break; // avoid large combinitoric problems for now (heterozygous, nonsynonymous count > 5), but still stick in the homozygous variation
-                    }
-                    newOnes.AddRange(newerOnes);
-                }
-                newTranscripts = newOnes;
-            }
-            return newTranscripts;
         }
 
         public List<Protein> Translate(bool translateCodingDomains, HashSet<string> incompleteTranscriptAccessions = null, Dictionary<string, string> selenocysteineContaining = null)

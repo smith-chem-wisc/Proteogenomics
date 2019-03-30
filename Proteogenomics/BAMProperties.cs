@@ -79,7 +79,7 @@ namespace Proteogenomics
                 {
                     // set the interval contained by this read, and get the gene regions nearby
                     bool isReversed = read.Flag.HasFlag(SAMFlags.QueryOnReverseStrand);
-                    Interval readInterval = new Interval(null, read.RName, "source", isReversed ? "-" : "+", read.Pos, read.RefEndPos, null);
+                    Interval readInterval = new Interval(null, read.RName, "source", isReversed ? "-" : "+", read.Pos, read.RefEndPos);
                     bool hasNearbyRegion = gm.GenomeForest.Forest.TryGetValue(readInterval.ChromosomeID, out IntervalTree nearbyGeneTree);
                     if (hasNearbyRegion)
                     {

@@ -13,8 +13,8 @@ namespace Proteogenomics
     {
         private List<UTR5Prime> UTRs { get; set; }
 
-        public UTR5Prime(Exon parent, string chromID, string source, string strand, long oneBasedStart, long oneBasedEnd, HashSet<Variant> variants) :
-            base(parent, chromID, source, strand, oneBasedStart, oneBasedEnd, variants)
+        public UTR5Prime(Exon parent, string chromID, string source, string strand, long oneBasedStart, long oneBasedEnd) :
+            base(parent, chromID, source, strand, oneBasedStart, oneBasedEnd)
         {
         }
 
@@ -35,20 +35,6 @@ namespace Proteogenomics
         public override bool is5Prime()
         {
             return true;
-        }
-
-        private long utrDistance(Variant variant, Transcript tr)
-        {
-            long cdsStart = tr.CdsOneBasedStart;
-            if (cdsStart < 0)
-            {
-                return -1;
-            }
-            if (IsStrandPlus())
-            {
-                return cdsStart - variant.OneBasedEnd;
-            }
-            return variant.OneBasedStart - cdsStart;
         }
 
         public List<UTR5Prime> get5primeUtrs()
@@ -104,59 +90,6 @@ namespace Proteogenomics
                 }
             }
             return "";
-        }
-
-        /// <summary>
-        /// Did we gain a start codon in this 5'UTR interval?
-        /// </summary>
-        /// <param name="seqChange"></param>
-        /// <returns>A new start codon (if gained)</returns>
-        private string startGained(Variant seqChange)
-        {
-            if (!seqChange.isSnv()) { return ""; } // Only SNPs supported.
-
-            // Calculate SNP position relative to UTRs
-            long pos = seqChange.DistanceBases(get5primeUtrs().OfType<Interval>().ToList(), IsStrandMinus());
-
-            // Change base at SNP position
-            string sequence = getSequence();
-            char[] chars = sequence.ToCharArray();
-            char snpBase = seqChange.NetChange(this)[0];
-            if (IsStrandMinus() && Alphabets.DNA.TryGetComplementSymbol((byte)snpBase, out byte complement))
-            {
-                snpBase = (char)complement;
-            }
-            chars[pos] = snpBase;
-
-            // Do we gain a new start codon?
-            return startGained(chars, pos);
-        }
-
-        public override bool CreateVariantEffect(Variant variant, VariantEffects variantEffects)
-        {
-            // Has the whole UTR been deleted?
-            if (variant.Includes(this) && variant.VarType == Variant.VariantType.DEL)
-            {
-                variantEffects.AddEffect(variant, this, EffectType.UTR_5_DELETED, ""); // A UTR was removed entirely
-                return true;
-            }
-
-            // Add distance
-            Transcript tr = (Transcript)FindParent(typeof(Transcript));
-            long distance = utrDistance(variant, tr);
-            VariantEffect variantEffect = new VariantEffect(variant);
-            variantEffect.Set(this, IntervalType, EffectTypeMethods.EffectDictionary[IntervalType], distance >= 0 ? distance + " bases from TSS" : "");
-            variantEffect.Distance = distance;
-            variantEffects.AddEffect(variantEffect);
-
-            // Start gained?
-            string gained = startGained(variant);
-            if (gained != "")
-            {
-                variantEffects.AddEffect(variant, this, EffectType.START_GAINED, gained);
-            }
-
-            return true;
         }
     }
 }

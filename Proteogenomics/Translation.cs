@@ -36,7 +36,7 @@ namespace Proteogenomics
                     // Check for start codon, and add 'M' if so
                     if (aminoAcidSequence.Count == 0 &&
                         CodonsVertebrateMitochondrial.START_CODONS.Contains(
-                            new string(dnaSequence.GetSubSequence(codonNum * 3, CodonChange.CODON_SIZE).Select(bp => (char)bp).ToArray())))
+                            new string(dnaSequence.GetSubSequence(codonNum * 3, GeneModel.CODON_SIZE).Select(bp => (char)bp).ToArray())))
                     {
                         aminoAcidSequence.Add((byte)CodonsVertebrateMitochondrial.DEFAULT_START_AA);
                         continue;

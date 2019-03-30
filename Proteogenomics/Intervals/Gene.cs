@@ -19,7 +19,7 @@ namespace Proteogenomics
         /// <param name="oneBasedEnd"></param>
         /// <param name="metadata"></param>
         public Gene(string id, Chromosome chromosome, string source, string strand, long oneBasedStart, long oneBasedEnd, MetadataListItem<List<string>> featureMetadata)
-            : base(chromosome, chromosome.Sequence.ID, source, strand, oneBasedStart, oneBasedEnd, null)
+            : base(chromosome, chromosome.Sequence.ID, source, strand, oneBasedStart, oneBasedEnd)
         {
             ID = id;
             Chromosome = chromosome;
